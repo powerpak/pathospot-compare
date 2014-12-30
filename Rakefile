@@ -50,7 +50,7 @@ task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :
   mkdir_p ENV['TMP'] or abort "FATAL: set TMP to a directory that can store scratch files"
 end
 
-# pulls down and compiles mugsy v1 r2.2, which is used by the mugsy task
+# pulls down a precompiled static binary for mugsy v1 r2.2, which is used by the mugsy task
 # see http://mugsy.sourceforge.net/
 task :mugsy_install => [:env, MUGSY_DIR, "#{MUGSY_DIR}/mugsy"]
 directory MUGSY_DIR
@@ -60,19 +60,57 @@ file "#{MUGSY_DIR}/mugsy" do
       curl -L -o mugsy.tar.gz 'http://sourceforge.net/projects/mugsy/files/mugsy_x86-64-v1r2.2.tgz/download'
       tar xvzf mugsy.tar.gz
       mv mugsy_x86-64-v1r2.2/* '#{MUGSY_DIR}'
-      rm -rf mugsy_x86-64-v1r2.2
+      rm -rf mugsy_x86-64-v1r2.2 mugsy.tar.gz
     SH
   end
-  Dir.chdir(MUGSY_DIR) { system "make install" }
 end
 
-task :clustalw do
+# pulls down a precompiled static binary for ClustalW2.1, which is used by the mugsy task
+# see http://www.clustal.org/
+task :clustalw => [:env, CLUSTALW_DIR, "#{CLUSTALW_DIR}/clustalw2"]
+directory CLUSTALW_DIR
+file "#{CLUSTALW_DIR}/clustalw2" do
+  Dir.chdir(File.dirname(CLUSTALW_DIR)) do
+    system <<-SH
+      curl -L -o clustalw.tar.gz 'http://www.clustal.org/download/current/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz'
+      tar xvzf clustalw.tar.gz
+      mv clustalw-2.1-linux-x86_64-libcppstatic/* #{Shellwords.escape(CLUSTALW_DIR)}
+      rm -rf clustalw-2.1-linux-x86_64-libcppstatic clustalw.tar.gz
+    SH
+  end
 end
 
-task :raxml do
+# pulls down and compiles RAxML 8.0.2, which is used by the mugsy task
+# see http://sco.h-its.org/exelixis/web/software/raxml/index.html
+task :raxml => [:env, RAXML_DIR, "#{RAXML_DIR}/raxmlHPC"]
+directory RAXML_DIR
+file "#{RAXML_DIR}/raxmlHPC" do
+  Dir.chdir(File.dirname(CLUSTALW_DIR)) do
+    system <<-SH
+      curl -L -o raxml.tar.gz 'https://github.com/stamatak/standard-RAxML/archive/v8.0.2.tar.gz'
+      tar xvzf raxml.tar.gz
+      rm raxml.tar.gz
+    SH
+  end
+  Dir.chdir("#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2") do
+    system "make -f Makefile.gcc" and cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")
+  end
+  rm_rf "#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2"
 end
 
-task :mauve_install do
+# pulls down precompiled static binaries and JAR files for Mauve 2.3.1, which is used by the mauve task
+# see http://asap.genetics.wisc.edu/software/mauve/
+task :mauve_install => [:env, MAUVE_DIR, "#{MAUVE_DIR}/progressiveMauve"]
+directory MAUVE_DIR
+file "#{MAUVE_DIR}/progressiveMauve" do
+  Dir.chdir(File.dirname(MAUVE_DIR)) do
+    system <<-SH
+      curl -L -o mauve.tar.gz 'http://asap.genetics.wisc.edu/software/mauve/downloads/mauve_linux_2.3.1.tar.gz'
+      tar xvzf mauve.tar.gz
+      mv mauve_2.3.1/* #{Shellwords.escape(MAUVE_DIR)}
+      rm -rf mauve_2.3.1 mauve.tar.gz
+    SH
+  end
 end
 
 file "pathogendb-comparison.png" => [:graph]
@@ -82,7 +120,7 @@ task :graph do
     module load graphviz
     STRAIN_NAME=STRAIN_NAME rake -f #{Shellwords.escape(__FILE__)} -P \
         | #{REPO_DIR}/scripts/rake-prereqs-dot.rb --prune #{REPO_DIR} --replace-with REPO_DIR \
-        | dot -Tpng -o pathogendb-pipeline.png
+        | dot -Tpng -o pathogendb-comparison.png
   SH
 end
 
@@ -91,3 +129,74 @@ end
 # = mugsy =
 # =========
 
+desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
+task :mugsy do |t|
+  path_file = ENV['IN_FOFN']
+  abort "FATAL: Task mugsy requires specifying IN_FOFN" unless path_file
+  tree_name = ENV['OUT_PREFIX']
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless tree_name
+  outgroup = ENV['OUTGROUP']
+  abort "FATAL: Task mugsy requires specifying OUTGROUP" unless outgroup
+  
+  tree_directory = OUT
+  mkdir_p "#{OUT}/log"
+  
+  fofn = File.new(path_file)
+  paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
+  
+  LSF.set_out_err("log/mugsy.log", "log/mugsy.err.log")
+  LSF.job_name "#{tree_name}_mas"
+  LSF.bsub_interactive <<-SH
+    export MUGSY_INSTALL=#{MUGSY_DIR} &&
+    #{MUGSY_DIR}/mugsy -p #{tree_name} --directory #{tree_directory} #{paths} &&
+    perl #{REPO_DIR}/scripts/processMAF_File.pl #{tree_name}.maf > #{tree_name}.fa
+    
+    # no point in going further if mugsy failed
+    if [ ! -f #{tree_name}.fa ]; then exit 1; fi
+    
+    # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
+    sed '/^[^>]/s/\-/N/g' #{tree_name}.fa > #{tree_name}_1.fa
+    
+    # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
+    #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{tree_name}_1.fa -output=phylip
+    
+    # Use RAxML to create a maximum likelihood phylogenetic tree
+    # Suppress these; there are thousands of them
+    #{RAXML_DIR}/raxmlHPC -s #{tree_name}_1.phy -#20 -m GTRGAMMA -n #{tree_name} -p 12345 \
+        -o #{outgroup.slice(0,10)} 2>&1 \
+        | grep -v 'IMPORTANT WARNING: Alignment column' | cat  # Suppress these; there are thousands of them
+    #{RAXML_DIR}/raxmlHPC -f A -s #{tree_name}_1.phy -m GTRGAMMA -p 12345 \
+        -t RAxML_bestTree.#{tree_name} -n #{tree_name}_mas 2>&1 \
+        | grep -v 'IMPORTANT WARNING: Alignment column' | cat  # Suppress these; there are thousands of them
+  SH
+end
+
+
+# =========
+# = mauve =
+# =========
+
+desc "Produces a Mauve alignment"
+task :mauve do |t|
+  path_file = ENV['IN_FOFN']
+  abort "FATAL: Task mauve requires specifying IN_FOFN" unless path_file
+  output_name = ENV['OUT_PREFIX']
+  abort "FATAL: Task mauve requires specifying OUT_PREFIX" unless output_name
+  seed_weight = ENV['SEED_WEIGHT']
+  abort "FATAL: Task mauve requires specifying SEED_WEIGHT" unless seed_weight
+  lcb_weight = ENV['LCB_WEIGHT']
+  abort "FATAL: Task mauve requires specifying LCB_WEIGHT" unless lcb_weight
+  
+  tree_directory = OUT
+  mkdir_p "#{OUT}/log"
+  
+  fofn = File.new(path_file)
+  paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
+  
+  LSF.set_out_err("log/mauve.log", "log/mauve.err.log")
+  LSF.job_name "#{output_name}.xmfa"
+  LSF.bsub_interactive <<-SH
+    #{MAUVE_DIR}/progressiveMauve --output=#{output_name}.xmfa --seed-weight=#{seed_weight} \
+         --weight=#{lcb_weight} #{paths}
+  SH
+end

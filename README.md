@@ -4,6 +4,8 @@
 
 As of now, this only runs on [Minerva](http://hpc.mssm.edu) because it uses modules and software found on that cluster.  In due time, it might be made portable to other systems.
 
+Currently, you also need to be in the `pacbioUsers` group on Minerva and have access to the `premium` LSF queue and the `acc_PBG` LSF account.
+
 ## Usage
 
 First, clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
@@ -33,7 +35,7 @@ If a required environment variable isn't present when a task is run and there is
 
 Variable             | Required by                           | Default | Purpose
 ---------------------|---------------------------------------|---------|-----------------------------------
-`OUT`                | all tasks                             | ./out   | This is where your interim files are saved.
+`OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
 `IN_FOFN`            | `mugsy` `mauve`                       | (none)  | A file containing filenames that will be processed as input
 `OUT_PREFIX`         | `mugsy` `mauve`                       | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
@@ -41,6 +43,20 @@ Variable             | Required by                           | Default | Purpose
 `LCB_WEIGHT`         | `mauve`                               | (none)  | Minimum pairwise LCB score
 
 [outgroup]: http://en.wikipedia.org/wiki/Outgroup_%28cladistics%29
+
+### Tasks
+
+#### Mugsy
+
+`rake mugsy` requires you to set `OUT`, `IN_FOFN`, `OUT_PREFIX`, and `OUTGROUP`.
+
+`IN_FOFN` is a file containing the full paths (one per line) to FASTA files containing contigs for whole genome sqeuences that you intend to compare with [Mugsy].  Mugsy will first align the whole genomes to each other, creating MAF alignment files that are converted back into a multisequence FASTA file with one fully aligned sequence per genome. [ClustalW][] is used to convert this into a PHYLIP file, which is then fed to RAxML to produce a phylogenetic tree.
+
+**Important:** in order for this task to succeed, the input FASTA files must have initial sequence IDs (the first line starting with ">") that are unique *after truncation to 10 characters* among all of the genomes being compared. This is due to the limitations of the [PHYLIP format][].
+
+[Mugsy]: http://mugsy.sourceforge.net/
+[ClustalW]: http://www.clustal.org/clustal2/
+[PHYLIP format]: http://www.bioperl.org/wiki/PHYLIP_multiple_alignment_format 
 
 ### Dependency graph
 
