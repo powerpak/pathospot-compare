@@ -58,7 +58,9 @@ file "#{MUGSY_DIR}/mugsy" do
   Dir.chdir(File.dirname(MUGSY_DIR)) do
     system <<-SH
       curl -L -o mugsy.tar.gz 'http://sourceforge.net/projects/mugsy/files/mugsy_x86-64-v1r2.2.tgz/download'
-      tar xvzf mugsy.tar.gz  # Creates MUMMER_DIR
+      tar xvzf mugsy.tar.gz
+      mv mugsy_x86-64-v1r2.2/* '#{MUGSY_DIR}'
+      rm -rf mugsy_x86-64-v1r2.2
     SH
   end
   Dir.chdir(MUGSY_DIR) { system "make install" }
