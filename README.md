@@ -8,10 +8,9 @@ As of now, this only runs on [Minerva](http://hpc.mssm.edu) because it uses modu
 
 First, clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
 
-    $ cp scripts/env.example.sh scripts/env.sh
-    $ $EDITOR scripts/env.sh    
+    $ cp scripts/env.example.sh scripts/env.sh  
 
-For the rest of the variables, the defaults should work for any Minerva user.  Then, you can source the script into your shell and install required gems locally into the `vendor/bundle` directory as follows:
+The defaults should work for any Minerva user.  Then, you can source the script into your shell and install required gems locally into the `vendor/bundle` directory as follows:
 
     $ source scripts/env.sh
     $ bundle install --deployment
@@ -28,7 +27,7 @@ When firing up the pipeline in a new shell, always remember to `source scripts/e
 
 Certain tasks within the pipeline require you to specify some extra information as an environment variable.  You can do this by either editing them into `scripts/env.sh` and re-running `source scripts/env.sh`, or you can prepend them to the `rake` invocation, e.g.:
 
-    $ FOFN= rake pull_down_raw_reads
+    $ IN_FOFN=LB_genomes.fofn rake mugsy
 
 If a required environment variable isn't present when a task is run and there is no default value, rake will abort with an error message.
 
