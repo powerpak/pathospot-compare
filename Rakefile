@@ -64,6 +64,15 @@ file "#{MUGSY_DIR}/mugsy" do
   Dir.chdir(MUGSY_DIR) { system "make install" }
 end
 
+task :clustalw do
+end
+
+task :raxml do
+end
+
+task :mauve_install do
+end
+
 file "pathogendb-comparison.png" => [:graph]
 desc "Generates a graph of tasks, intermediate files and their dependencies from this Rakefile"
 task :graph do
