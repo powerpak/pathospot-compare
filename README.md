@@ -48,7 +48,7 @@ Variable             | Required by                           | Default | Purpose
 
 #### Mugsy
 
-`rake mugsy` requires you to set `OUT`, `IN_FOFN`, `OUT_PREFIX`, and `OUTGROUP`.
+`rake mugsy` requires you to set the `OUT`, `IN_FOFN`, `OUT_PREFIX`, and `OUTGROUP` environment variables. See [Environment variables](#environment-variables) for a description of each.
 
 `IN_FOFN` is a file containing the full paths (one per line) to FASTA files containing contigs for whole genome sqeuences that you intend to compare with [Mugsy].  Mugsy will first align the whole genomes to each other, creating MAF alignment files that are converted back into a multisequence FASTA file with one fully aligned sequence per genome. [ClustalW][] is used to convert this into a PHYLIP file, which is then fed to RAxML to produce a phylogenetic tree.
 
@@ -57,6 +57,10 @@ Variable             | Required by                           | Default | Purpose
 [Mugsy]: http://mugsy.sourceforge.net/
 [ClustalW]: http://www.clustal.org/clustal2/
 [PHYLIP format]: http://www.bioperl.org/wiki/PHYLIP_multiple_alignment_format 
+
+#### Mauve
+
+`rake mauve` requires you to set the `OUT`, `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `LCB_WEIGHT` environment variables. See [Environment variables](#environment-variables) for a description of each.
 
 ### Dependency graph
 
