@@ -155,7 +155,9 @@ task :mugsy do |t|
     if [ ! -f #{tree_name}.fa ]; then exit 1; fi
     
     # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
-    sed '/^[^>]/s/\-/N/g' #{tree_name}.fa > #{tree_name}_1.fa
+    # Also replace the first period in sequence IDs with a stretch of 10 spaces
+    # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
+    sed '/^[^>]/s/\-/N/g' #{tree_name}.fa | sed '/^>/s/\./          /' > #{tree_name}_1.fa
     
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
     #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{tree_name}_1.fa -output=phylip
@@ -163,11 +165,9 @@ task :mugsy do |t|
     # Use RAxML to create a maximum likelihood phylogenetic tree
     # Suppress these; there are thousands of them
     #{RAXML_DIR}/raxmlHPC -s #{tree_name}_1.phy -#20 -m GTRGAMMA -n #{tree_name} -p 12345 \
-        -o #{outgroup.slice(0,10)} 2>&1 \
-        | grep -v 'IMPORTANT WARNING: Alignment column' | cat  # Suppress these; there are thousands of them
+        -o #{outgroup.slice(0,10)}
     #{RAXML_DIR}/raxmlHPC -f A -s #{tree_name}_1.phy -m GTRGAMMA -p 12345 \
-        -t RAxML_bestTree.#{tree_name} -n #{tree_name}_mas 2>&1 \
-        | grep -v 'IMPORTANT WARNING: Alignment column' | cat  # Suppress these; there are thousands of them
+        -t RAxML_bestTree.#{tree_name} -n #{tree_name}_mas
   SH
 end
 
