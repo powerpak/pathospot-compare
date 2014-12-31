@@ -163,9 +163,10 @@ task :mugsy do |t|
     #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{tree_name}_1.fa -output=phylip
     
     # Use RAxML to create a maximum likelihood phylogenetic tree
-    # Suppress these; there are thousands of them
+    # 1) Bootstrapping step
     #{RAXML_DIR}/raxmlHPC -s #{tree_name}_1.phy -#20 -m GTRGAMMA -n #{tree_name} -p 12345 \
         -o #{outgroup.slice(0,10)}
+    # 2) Full analysis
     #{RAXML_DIR}/raxmlHPC -f A -s #{tree_name}_1.phy -m GTRGAMMA -p 12345 \
         -t RAxML_bestTree.#{tree_name} -n #{tree_name}_mas
   SH
