@@ -157,7 +157,7 @@ task :mugsy do |t|
     # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
     # Also replace the first period in sequence IDs with a stretch of 10 spaces
     # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
-    sed '/^[^>]/s/\-/N/g' #{tree_name}.fa | sed '/^>/s/\./          /' > #{tree_name}_1.fa
+    sed '/^[^>]/s/\-/N/g' #{tree_name}.fa | sed '/^>/s/\\./          /' > #{tree_name}_1.fa
     
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
     #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{tree_name}_1.fa -output=phylip
