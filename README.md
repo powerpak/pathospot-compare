@@ -48,7 +48,7 @@ According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a
 
 ### Tasks
 
-#### Mugsy
+#### mugsy
 
 `rake mugsy` requires you to set the `IN_FOFN`, `OUT_PREFIX`, and `OUTGROUP` environment variables. See [Environment variables](#environment-variables) for a description of each.
 
@@ -56,12 +56,19 @@ According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a
 
 **Important:** in order for this task to succeed, the input FASTA files must have initial sequence IDs (the first line starting with ">") that are unique *after truncation to 10 characters* among all of the genomes being compared. This is due to the limitations of the [PHYLIP format][].
 
+Output will be found as files starting with "RAxML_" in your `OUT` directory, with `RAxML_bestTree.$OUT_PREFIX` containing the tree in [Newick format][].
+
 [Mugsy]: http://mugsy.sourceforge.net/
 [ClustalW]: http://www.clustal.org/clustal2/
 [PHYLIP format]: http://www.bioperl.org/wiki/PHYLIP_multiple_alignment_format
 [RAxML]: http://sco.h-its.org/exelixis/web/software/raxml/index.html
+[Newick format]: http://en.wikipedia.org/wiki/Newick_format
 
-#### Mauve
+#### mugsy_plot
+
+`rake mugsy_plot` generates a phylogram using R's `ape` library from the phylogenetic tree produced in the `rake mugsy` task. Remember to specify `OUT_PREFIX` if you have already run `rake mugsy` so it can find your tree file; if not, you'll need to specify *all* of the variables required for `rake mugsy`.
+
+#### mauve
 
 `rake mauve` requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `LCB_WEIGHT` environment variables. See [Environment variables](#environment-variables) for a description of each.
 
