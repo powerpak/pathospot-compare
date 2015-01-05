@@ -21,8 +21,7 @@ OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 # Other environment variables that may be set by the user for specific tasks (see README.md)
 #######
 
-OUT_PREFIX = ENV['OUT_PREFIX']
-
+OUT_PREFIX = ENV['OUT_PREFIX'] || "out"
 
 #############################################################
 #  IMPORTANT!
