@@ -38,6 +38,7 @@ end
 puts "digraph g {"
 puts 'size="20,20"'
 puts 'ratio="compress"'
+puts 'ranksep="1.0"'
 
 task = nil
 STDIN.each_line do |line|

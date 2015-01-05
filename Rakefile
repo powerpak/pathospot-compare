@@ -21,6 +21,8 @@ OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 # Other environment variables that may be set by the user for specific tasks (see README.md)
 #######
 
+OUT_PREFIX = ENV['OUT_PREFIX']
+
 
 #############################################################
 #  IMPORTANT!
@@ -116,10 +118,12 @@ end
 file "pathogendb-comparison.png" => [:graph]
 desc "Generates a graph of tasks, intermediate files and their dependencies from this Rakefile"
 task :graph do
+  # The unflatten step helps with layout; see http://www.graphviz.org/pdf/unflatten.1.pdf
   system <<-SH
     module load graphviz
-    STRAIN_NAME=STRAIN_NAME rake -f #{Shellwords.escape(__FILE__)} -P \
+    OUT_PREFIX=OUT_PREFIX rake -f #{Shellwords.escape(__FILE__)} -P \
         | #{REPO_DIR}/scripts/rake-prereqs-dot.rb --prune #{REPO_DIR} --replace-with REPO_DIR \
+        | unflatten -f -l5 -c 3 \
         | dot -Tpng -o pathogendb-comparison.png
   SH
 end
@@ -130,11 +134,12 @@ end
 # =========
 
 desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
-task :mugsy do |t|
+task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"]
+file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_PREFIX}"
+file "RAxML_bestTree.#{OUT_PREFIX}" do |t|
   path_file = ENV['IN_FOFN']
   abort "FATAL: Task mugsy requires specifying IN_FOFN" unless path_file
-  tree_name = ENV['OUT_PREFIX']
-  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless tree_name
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
   outgroup = ENV['OUTGROUP']
   abort "FATAL: Task mugsy requires specifying OUTGROUP" unless outgroup
   
@@ -145,44 +150,57 @@ task :mugsy do |t|
   paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mugsy.log", "log/mugsy.err.log")
-  LSF.job_name "#{tree_name}_mas"
+  LSF.job_name "#{OUT_PREFIX}_mas"
   LSF.bsub_interactive <<-SH
     export MUGSY_INSTALL=#{MUGSY_DIR} &&
-    #{MUGSY_DIR}/mugsy -p #{tree_name} --directory #{tree_directory} #{paths} &&
-    perl #{REPO_DIR}/scripts/processMAF_File.pl #{tree_name}.maf > #{tree_name}.fa
+    #{MUGSY_DIR}/mugsy -p #{OUT_PREFIX} --directory #{tree_directory} #{paths} &&
+    perl #{REPO_DIR}/scripts/processMAF_File.pl #{OUT_PREFIX}.maf > #{OUT_PREFIX}.fa
     
     # no point in going further if mugsy failed
-    if [ ! -f #{tree_name}.fa ]; then exit 1; fi
+    if [ ! -f #{OUT_PREFIX}.fa ]; then exit 1; fi
     
     # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
     # Also replace the first period in sequence IDs with a stretch of 10 spaces
     # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
-    sed '/^[^>]/s/\-/N/g' #{tree_name}.fa | sed '/^>/s/\\./          /' > #{tree_name}_1.fa
+    sed '/^[^>]/s/\-/N/g' #{OUT_PREFIX}.fa | sed '/^>/s/\\./          /' > #{OUT_PREFIX}_1.fa
     
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
-    #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{tree_name}_1.fa -output=phylip
+    #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{OUT_PREFIX}_1.fa -output=phylip
     
     # Use RAxML to create a maximum likelihood phylogenetic tree
     # 1) Bootstrapping step
-    #{RAXML_DIR}/raxmlHPC -s #{tree_name}_1.phy -#20 -m GTRGAMMA -n #{tree_name} -p 12345 \
+    #{RAXML_DIR}/raxmlHPC -s #{OUT_PREFIX}_1.phy -#20 -m GTRGAMMA -n #{OUT_PREFIX} -p 12345 \
         -o #{outgroup.slice(0,10)}
     # 2) Full analysis
-    #{RAXML_DIR}/raxmlHPC -f A -s #{tree_name}_1.phy -m GTRGAMMA -p 12345 \
-        -t RAxML_bestTree.#{tree_name} -n #{tree_name}_mas
+    #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.phy -m GTRGAMMA -p 12345 \
+        -t RAxML_bestTree.#{OUT_PREFIX} -n #{OUT_PREFIX}_mas
   SH
 end
 
+desc "Produces a plot of the phylogenetic tree created by `rake mugsy`"
+task :mugsy_plot => [:check, "RAxML_bestTree.#{OUT_PREFIX}.pdf"]
+file "RAxML_bestTree.#{OUT_PREFIX}.pdf" => "RAxML_bestTree.#{OUT_PREFIX}" do |t|
+  abort "FATAL: Task mugsy_plot requires specifying OUT_PREFIX" unless OUT_PREFIX
+  
+  tree_file = Shellwords.escape "RAxML_bestTree.#{OUT_PREFIX}"
+  system <<-SH
+    module load R/3.1.0
+    R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}
+  SH
+end
 
 # =========
 # = mauve =
 # =========
 
 desc "Produces a Mauve alignment"
-task :mauve do |t|
+task :mauve => [:check, "#{OUT_PREFIX}.xmfa", "#{OUT_PREFIX}.xmfa.backbone", "#{OUT_PREFIX}.xmfa.bbcols"]
+file "#{OUT_PREFIX}.xmfa.backbone" => "#{OUT_PREFIX}.xmfa"
+file "#{OUT_PREFIX}.xmfa.bbcols" => "#{OUT_PREFIX}.xmfa"
+file "#{OUT_PREFIX}.xmfa" do |t|
   path_file = ENV['IN_FOFN']
   abort "FATAL: Task mauve requires specifying IN_FOFN" unless path_file
-  output_name = ENV['OUT_PREFIX']
-  abort "FATAL: Task mauve requires specifying OUT_PREFIX" unless output_name
+  abort "FATAL: Task mauve requires specifying OUT_PREFIX" unless OUT_PREFIX
   seed_weight = ENV['SEED_WEIGHT']
   abort "FATAL: Task mauve requires specifying SEED_WEIGHT" unless seed_weight
   lcb_weight = ENV['LCB_WEIGHT']
@@ -195,9 +213,9 @@ task :mauve do |t|
   paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mauve.log", "log/mauve.err.log")
-  LSF.job_name "#{output_name}.xmfa"
+  LSF.job_name "#{OUT_PREFIX}.xmfa"
   LSF.bsub_interactive <<-SH
-    #{MAUVE_DIR}/progressiveMauve --output=#{output_name}.xmfa --seed-weight=#{seed_weight} \
+    #{MAUVE_DIR}/progressiveMauve --output=#{OUT_PREFIX}.xmfa --seed-weight=#{seed_weight} \
          --weight=#{lcb_weight} #{paths}
   SH
 end

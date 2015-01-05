@@ -73,7 +73,7 @@ According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a
 
 This Rakefile is able to build a dependency graph of its intermediate files from itself.  Use the `rake graph` task for this; it will be generated at `$OUT/pathogendb-comparison.png`.
 
-(TODO)
+![Dependency graph](https://pakt01.u.hpc.mssm.edu/pathogendb-comparison.png)
 
 ## Other notes
 
