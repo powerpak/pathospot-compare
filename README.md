@@ -42,6 +42,8 @@ Variable             | Required by                           | Default | Purpose
 `SEED_WEIGHT`        | `mauve`                               | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve`                               | (none)  | Minimum pairwise LCB score
 
+According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
+
 [outgroup]: http://en.wikipedia.org/wiki/Outgroup_%28cladistics%29
 
 ### Tasks
