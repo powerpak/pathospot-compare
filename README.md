@@ -37,7 +37,7 @@ Variable             | Required by                           | Default | Purpose
 ---------------------|---------------------------------------|---------|-----------------------------------
 `OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
 `IN_FOFN`            | `mugsy` `mauve`                       | (none)  | A file containing filenames that will be processed as input
-`OUT_PREFIX`         | `mugsy` `mauve`                       | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
+`OUT_PREFIX`         | `mugsy` `mugsy_plot` `mauve`          | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
 `SEED_WEIGHT`        | `mauve`                               | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve`                               | (none)  | Minimum pairwise LCB score
