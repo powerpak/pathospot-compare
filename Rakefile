@@ -40,8 +40,8 @@ task :env do
   ENV['PERL5LIB'] ||= "/usr/bin/perl5.10.1"
 end
 
-file "#{REPO_DIR}/scripts/env.sh" => "#{REPO_DIR}/scripts/env.example.sh" do
-  cp "#{REPO_DIR}/scripts/env.example.sh", "#{REPO_DIR}/scripts/env.sh"
+file "#{REPO_DIR}/scripts/env.sh" => "#{REPO_DIR}/scripts/example.env.sh" do
+  cp "#{REPO_DIR}/scripts/example.env.sh", "#{REPO_DIR}/scripts/env.sh"
 end
 
 ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` before running rake."
