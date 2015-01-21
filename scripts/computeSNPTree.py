@@ -93,7 +93,7 @@ def recomputeBranchLengths(tree, fasta_files):
 
             # This marginal ancestral state branches from another marginal ancestral state
             if(clade.confidence and ancestor.confidence):
-               clade.branch_length = computeDistance(fasta_seqs, clade.confidence, ancestor.confidence)
+                clade.branch_length = computeDistance(fasta_seqs, clade.confidence, ancestor.confidence)
 
             # This named strain branches from a numbered marginal ancestral state
             if(clade.name and ancestor.confidence):
