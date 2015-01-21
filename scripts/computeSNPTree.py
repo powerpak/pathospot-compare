@@ -22,7 +22,7 @@ argv[3] should be a FASTA file with the aligned leaf node sequences
             
 You can convert RAxML_marginalAncestralStates to FASTA with:
 
-    $ sed 's/^\([[:alnum:]]\+\) \+/>\1\n/g' input > output.fasta
+    $ sed 's/^\([[:alnum:]]\+\) \+/>\1\n/g' $input | sed 's/?/N/g' >$output.fasta
 """
 
 ##
