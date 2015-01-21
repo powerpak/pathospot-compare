@@ -8,7 +8,14 @@ if (length(args) < 1) {
 my_tree <- read.tree(file=args[1])
 out_pdf <- if(length(args) > 1) args[2] else paste(args[1], ".pdf", sep="")
 
-pdf(out_pdf, width=7, height=5)
+pdf(out_pdf, width=9, height=5)
+par(mar=c(0.2,0.2,0.2,0.2))       # Suppress any margins.
+
+scaling <- 1
+if (max(my_tree$edge.length) > 6000) {
+  scaling <- max(my_tree$edge.length) / 5000
+  my_tree$edge.length <- my_tree$edge.length / scaling
+}
 
 plot(my_tree)
-edgelabels(round(my_tree$edge.length, 3), adj = c(0.5, -0.25), cex=0.7, frame="none")
+edgelabels(round(my_tree$edge.length * scaling, 3), adj = c(0.5, -0.25), cex=0.7, frame="none")

@@ -133,7 +133,8 @@ end
 # =========
 
 desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
-task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"]
+task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
+                "#{OUT_PREFIX}_snp_tree.newick"]
 
 file "#{OUT_PREFIX}.fa" do |t|
   # First, performs whole genome alignment with Mugsy, producing a .maf file that we convert to .fa
@@ -217,7 +218,9 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
   
   system <<-SH
     # Convert RAxML's marginalAncestralStates file into a FASTA file
-    sed 's/^\([[:alnum:]]\+\) \+/>\1\n/g' "#{mas_file}" > "#{mas_file}.fa"
+    sed 's/^\\([[:alnum:]]\\+\\) \\+/>\\1\\n/g' "#{mas_file}" \
+        | sed 's/?/N/g' \
+        > "#{mas_file}.fa"
   SH
   mkdir_p "#{OUT}/log"
   LSF.set_out_err("log/mugsy_snp_tree.log", "log/mugsy_snp_tree.err.log")
@@ -225,17 +228,33 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
   LSF.bsub_interactive <<-SH
     module load python/2.7.6
     module load py_packages/2.7
-    scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa" \
+    #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa" \
         > "#{OUT_PREFIX}_snp_tree.newick"
   SH
 end
 
-desc "Produces a plot of the phylogenetic tree created by `rake mugsy`"
-task :mugsy_plot => [:check, "RAxML_bestTree.#{OUT_PREFIX}.pdf"]
+
+# ==============
+# = mugsy_plot =
+# ==============
+
+desc "Produces plots of the phylogenetic trees created by `rake mugsy`"
+task :mugsy_plot => [:check, "RAxML_bestTree.#{OUT_PREFIX}.pdf", "#{OUT_PREFIX}_snp_tree.newick.pdf"]
+
 file "RAxML_bestTree.#{OUT_PREFIX}.pdf" => "RAxML_bestTree.#{OUT_PREFIX}" do |t|
   abort "FATAL: Task mugsy_plot requires specifying OUT_PREFIX" unless OUT_PREFIX
   
   tree_file = Shellwords.escape "RAxML_bestTree.#{OUT_PREFIX}"
+  system <<-SH
+    module load R/3.1.0
+    R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}
+  SH
+end
+
+file "#{OUT_PREFIX}_snp_tree.newick.pdf" => "#{OUT_PREFIX}_snp_tree.newick" do |t|
+  abort "FATAL: Task mugsy_plot requires specifying OUT_PREFIX" unless OUT_PREFIX
+  
+  tree_file = Shellwords.escape "#{OUT_PREFIX}_snp_tree.newick"
   system <<-SH
     module load R/3.1.0
     R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}

@@ -36,6 +36,7 @@ import os
 import subprocess
 import re
 import tempfile
+import time
 
 def computeDistance(fasta_seqs, contig1, contig2):
     count = 0
@@ -78,10 +79,8 @@ def recomputeBranchLengths(tree, fasta_files):
     
         # Special cases for branches of the root node
         if clade_depth==1 and clade.name:
-               print "ROOT_", clade.name
                clade.branch_length = computeDistance(fasta_seqs, "ROOT", clade.name)
         if clade_depth==1 and clade.confidence:
-               print "ROOT_", clade.confidence
                clade.branch_length = computeDistance(fasta_seqs, "ROOT", clade.confidence)
 
         # For deeper branches
@@ -98,7 +97,6 @@ def recomputeBranchLengths(tree, fasta_files):
 
             # This named strain branches from a numbered marginal ancestral state
             if(clade.name and ancestor.confidence):
-                print clade.name, "_", ancestor.confidence
                 clade.branch_length = computeDistance(fasta_seqs, clade.name, ancestor.confidence)
                 
     return tree
@@ -107,7 +105,7 @@ def recomputeBranchLengths(tree, fasta_files):
 if __name__ == "__main__":
     
     if len(sys.argv) < 3:
-        print __doc__
+        sys.stderr.write(__doc__)
         sys.exit(1)
         
     raxml_nlrt_filename = sys.argv[1]
