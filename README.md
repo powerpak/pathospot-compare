@@ -56,7 +56,7 @@ According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a
 
 **Important:** in order for this task to succeed, the input FASTA files must have initial sequence IDs (the first line starting with ">") that are unique *after truncation to 10 characters* among all of the genomes being compared. This is due to the limitations of the [PHYLIP format][].
 
-Output will be found as files starting with "RAxML_" in your `OUT` directory, with `RAxML_bestTree.$OUT_PREFIX` containing the tree in [Newick format][].
+Output will be found as files starting with "RAxML_" in your `OUT` directory, with `RAxML_bestTree.$OUT_PREFIX` containing the tree with "evolutionary time" branch lengths in [Newick format][]. `$OUT_PREFIX_snp_tree.newick` will contain a similar tree, except the branch lengths are rescaled to the SNP distances between nodes in the tree, using the calculated marginal ancestral states.
 
 [Mugsy]: http://mugsy.sourceforge.net/
 [ClustalW]: http://www.clustal.org/clustal2/
@@ -66,7 +66,7 @@ Output will be found as files starting with "RAxML_" in your `OUT` directory, wi
 
 #### mugsy_plot
 
-`rake mugsy_plot` generates a phylogram using R's `ape` library from the phylogenetic tree produced in the `rake mugsy` task. Remember to specify `OUT_PREFIX` if you have already run `rake mugsy` so it can find your tree file; if not, you'll need to specify *all* of the variables required for `rake mugsy`.
+`rake mugsy_plot` generates phylograms using R's `ape` library from the phylogenetic trees produced in the `rake mugsy` task. Remember to specify `OUT_PREFIX` if you have already run `rake mugsy` so it can find your tree files; if not, you'll need to specify *all* of the variables required for `rake mugsy`.  You will find the plots saved as PDF files in the `OUT` directory.
 
 #### mauve
 
