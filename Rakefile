@@ -134,42 +134,68 @@ end
 
 desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
 task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"]
-file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_PREFIX}"
-file "RAxML_bestTree.#{OUT_PREFIX}" do |t|
+
+file "#{OUT_PREFIX}.fa" do |t|
+  # First, performs whole genome alignment with Mugsy, producing a .maf file that we convert to .fa
   path_file = ENV['IN_FOFN']
   abort "FATAL: Task mugsy requires specifying IN_FOFN" unless path_file
   abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
-  outgroup = ENV['OUTGROUP']
-  abort "FATAL: Task mugsy requires specifying OUTGROUP" unless outgroup
+  abort "FATAL: Task mugsy requires specifying OUTGROUP" unless ENV['OUTGROUP']
   
-  tree_directory = OUT
   mkdir_p "#{OUT}/log"
   
   fofn = File.new(path_file)
   paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mugsy.log", "log/mugsy.err.log")
-  LSF.job_name "#{OUT_PREFIX}_mas"
+  LSF.job_name "#{OUT_PREFIX}.fa"
   LSF.bsub_interactive <<-SH
     export MUGSY_INSTALL=#{MUGSY_DIR} &&
-    #{MUGSY_DIR}/mugsy -p #{OUT_PREFIX} --directory #{tree_directory} #{paths} &&
+    #{MUGSY_DIR}/mugsy -p #{OUT_PREFIX} --directory #{OUT} #{paths} &&
     perl #{REPO_DIR}/scripts/processMAF_File.pl #{OUT_PREFIX}.maf > #{OUT_PREFIX}.fa
-    
-    # no point in going further if mugsy failed
-    if [ ! -f #{OUT_PREFIX}.fa ]; then exit 1; fi
-    
+  SH
+end
+
+file "#{OUT_PREFIX}_1.phy" => "#{OUT_PREFIX}.fa" do |t|
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
+  
+  mkdir_p "#{OUT}/log"
+  LSF.set_out_err("log/mugsy_phy.log", "log/mugsy_phy.err.log")
+  LSF.job_name "#{OUT_PREFIX}_1.phy"
+  LSF.bsub_interactive <<-SH
     # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
     # Also replace the first period in sequence IDs with a stretch of 10 spaces
     # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
     sed '/^[^>]/s/\-/N/g' #{OUT_PREFIX}.fa | sed '/^>/s/\\./          /' > #{OUT_PREFIX}_1.fa
-    
+  
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
     #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{OUT_PREFIX}_1.fa -output=phylip
-    
+  SH
+end
+
+file "RAxML_bestTree.#{OUT_PREFIX}" => "#{OUT_PREFIX}_1.phy" do |t|
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
+  outgroup = ENV['OUTGROUP']
+  abort "FATAL: Task mugsy requires specifying OUTGROUP" unless outgroup
+  
+  mkdir_p "#{OUT}/log"
+  LSF.set_out_err("log/mugsy_raxml.log", "log/mugsy_raxml.err.log")
+  LSF.job_name "#{OUT_PREFIX}_raxml"
+  LSF.bsub_interactive <<-SH
     # Use RAxML to create a maximum likelihood phylogenetic tree
-    # 1) Bootstrapping step
+    # 1) Bootstrapping step that creates a tree to base marginal ancestral state analysis upon
     #{RAXML_DIR}/raxmlHPC -s #{OUT_PREFIX}_1.phy -#20 -m GTRGAMMA -n #{OUT_PREFIX} -p 12345 \
         -o #{outgroup.slice(0,10)}
+  SH
+end
+
+file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_PREFIX}" do |t|
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
+  
+  mkdir_p "#{OUT}/log"
+  LSF.set_out_err("log/mugsy_raxml_mas.log", "log/mugsy_raxml_mas.err.log")
+  LSF.job_name "#{OUT_PREFIX}_raxml_mas"
+  LSF.bsub_interactive <<-SH
     # 2) Full analysis
     #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.phy -m GTRGAMMA -p 12345 \
         -t RAxML_bestTree.#{OUT_PREFIX} -n #{OUT_PREFIX}_mas
