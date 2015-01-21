@@ -156,18 +156,24 @@ file "#{OUT_PREFIX}.fa" do |t|
   SH
 end
 
-file "#{OUT_PREFIX}_1.phy" => "#{OUT_PREFIX}.fa" do |t|
+file "#{OUT_PREFIX}_1.fa" => "#{OUT_PREFIX}.fa" do |t|
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
+  
+  system <<-SH
+    # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
+    # Also replace the first period in sequence IDs with a stretch of 10 spaces
+    # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
+    sed '/^[^>]/s/\-/N/g' #{OUT_PREFIX}.fa | sed '/^>/s/\\./          /' > #{OUT_PREFIX}_1.fa
+  SH
+end
+
+file "#{OUT_PREFIX}_1.phy" => "#{OUT_PREFIX}_1.fa" do |t|
   abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
   
   mkdir_p "#{OUT}/log"
   LSF.set_out_err("log/mugsy_phy.log", "log/mugsy_phy.err.log")
   LSF.job_name "#{OUT_PREFIX}_1.phy"
   LSF.bsub_interactive <<-SH
-    # Replace all hyphens (non-matches) with 'N' in sequence lines in this FASTA file
-    # Also replace the first period in sequence IDs with a stretch of 10 spaces
-    # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
-    sed '/^[^>]/s/\-/N/g' #{OUT_PREFIX}.fa | sed '/^>/s/\\./          /' > #{OUT_PREFIX}_1.fa
-  
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
     #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{OUT_PREFIX}_1.fa -output=phylip
   SH
@@ -199,6 +205,28 @@ file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_
     # 2) Full analysis
     #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.phy -m GTRGAMMA -p 12345 \
         -t RAxML_bestTree.#{OUT_PREFIX} -n #{OUT_PREFIX}_mas
+  SH
+end
+file "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas" => "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"
+
+file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
+    "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas", "#{OUT_PREFIX}_1.fa"] do |t|
+  abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
+  mas_file = "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"
+  nlr_tree = "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas"
+  
+  system <<-SH
+    # Convert RAxML's marginalAncestralStates file into a FASTA file
+    sed 's/^\([[:alnum:]]\+\) \+/>\1\n/g' "#{mas_file}" > "#{mas_file}.fa"
+  SH
+  mkdir_p "#{OUT}/log"
+  LSF.set_out_err("log/mugsy_snp_tree.log", "log/mugsy_snp_tree.err.log")
+  LSF.job_name "#{OUT_PREFIX}_snp_tree"
+  LSF.bsub_interactive <<-SH
+    module load python/2.7.6
+    module load py_packages/2.7
+    scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa" \
+        > "#{OUT_PREFIX}_snp_tree.newick"
   SH
 end
 
