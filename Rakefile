@@ -228,6 +228,7 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
   LSF.bsub_interactive <<-SH
     module load python/2.7.6
     module load py_packages/2.7
+    module load mummer/3.23
     #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa" \
         > "#{OUT_PREFIX}_snp_tree.newick"
   SH
