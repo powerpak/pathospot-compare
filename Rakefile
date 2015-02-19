@@ -106,10 +106,10 @@ directory MAUVE_DIR
 file "#{MAUVE_DIR}/progressiveMauve" do
   Dir.chdir(File.dirname(MAUVE_DIR)) do
     system <<-SH
-      curl -L -o mauve.tar.gz 'http://asap.genetics.wisc.edu/software/mauve/downloads/mauve_linux_2.3.1.tar.gz'
+      curl -L -o mauve.tar.gz 'http://darlinglab.org/mauve/downloads/mauve_linux_2.4.0.tar.gz'
       tar xvzf mauve.tar.gz
-      mv mauve_2.3.1/* #{Shellwords.escape(MAUVE_DIR)}
-      rm -rf mauve_2.3.1 mauve.tar.gz
+      mv mauve_2.4.0/* #{Shellwords.escape(MAUVE_DIR)}
+      rm -rf mauve.tar.gz mauve_linux_2.4.0.tar.gz
     SH
   end
 end
@@ -288,7 +288,7 @@ file "#{OUT_PREFIX}.xmfa" do |t|
   LSF.set_out_err("log/mauve.log", "log/mauve.err.log")
   LSF.job_name "#{OUT_PREFIX}.xmfa"
   LSF.bsub_interactive <<-SH
-    #{MAUVE_DIR}/progressiveMauve --output=#{OUT_PREFIX}.xmfa --seed-weight=#{seed_weight} \
+    #{MAUVE_DIR}/linux-x64/progressiveMauve --output=#{OUT_PREFIX}.xmfa --seed-weight=#{seed_weight} \
          --weight=#{lcb_weight} #{paths}
   SH
 end
