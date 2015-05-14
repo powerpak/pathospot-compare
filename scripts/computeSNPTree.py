@@ -46,14 +46,23 @@ def computeDistance(fasta_seqs, contig1, contig2):
     extractContig(fasta_seqs, contig1, "Contig1.fa")
     extractContig(fasta_seqs, contig2, "Contig2.fa")
     os.system("nucmer -p "+str(contig1)+"_"+str(contig2)+" Contig1.fa Contig2.fa")
-    os.system("delta-filter -lr "+str(contig1)+"_"+str(contig2)+".delta > "+str(contig1)+"_"+str(contig2)+"_df1.delta")
+    
+    # Conflicting repeat copies will first be eliminated with delta-filter and the 
+    # SNPs will be re-called in hopes of finding some that were previously masked by another repeat copy.
+    os.system("delta-filter -r -q "+str(contig1)+"_"+str(contig2)+".delta > "+str(contig1)+"_"+str(contig2)+"_df1.delta")
+    
+    # The -C option in show-snps assures that only SNPs found in uniquely aligned sequence 
+    # will be reported, thus excluding SNPs contained in repeats. 
+    # We could add the -I option to suppress indels here, making the next step unnecessary
     nucmer_output = subprocess.check_output("show-snps -Clr "+str(contig1)+"_"+str(contig2)+"_df1.delta", shell=True)
     nucmer_snps = nucmer_output.split("\n")
+    
     for snp in nucmer_snps:
         data = re.split("\s+", snp)
         if len(data) > 2:
             if data[2] in ['A','C','G','T'] and data[3] in ['A','C','G','T'] and data[2] != "." and data[3] != ".":
                 count += 1
+                
     os.chdir(initial_cwd)
     return count
 

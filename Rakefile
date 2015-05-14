@@ -101,9 +101,9 @@ end
 
 # pulls down precompiled static binaries and JAR files for Mauve 2.3.1, which is used by the mauve task
 # see http://asap.genetics.wisc.edu/software/mauve/
-task :mauve_install => [:env, MAUVE_DIR, "#{MAUVE_DIR}/progressiveMauve"]
+task :mauve_install => [:env, MAUVE_DIR, "#{MAUVE_DIR}/linux-x64/progressiveMauve"]
 directory MAUVE_DIR
-file "#{MAUVE_DIR}/progressiveMauve" do
+file "#{MAUVE_DIR}/linux-x64/progressiveMauve" do
   Dir.chdir(File.dirname(MAUVE_DIR)) do
     system <<-SH
       curl -L -o mauve.tar.gz 'http://darlinglab.org/mauve/downloads/mauve_linux_2.4.0.tar.gz'
