@@ -14,8 +14,12 @@ MUGSY_DIR = "#{REPO_DIR}/vendor/mugsy"
 CLUSTALW_DIR = "#{REPO_DIR}/vendor/clustalw"
 RAXML_DIR = "#{REPO_DIR}/vendor/raxml"
 MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
+GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 
 OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+
+IN_PATHS = ENV['IN_FOFN'] && File.new(ENV['IN_FOFN']).readlines.map(&:strip)
+IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 
 #######
 # Other environment variables that may be set by the user for specific tasks (see README.md)
@@ -47,7 +51,7 @@ end
 ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` before running rake."
 
 desc "Checks environment variables and requirements before running tasks"
-task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, :mauve_install] do
+task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, :mauve_install, :grimm] do
   mkdir_p ENV['TMP'] or abort "FATAL: set TMP to a directory that can store scratch files"
 end
 
@@ -114,6 +118,20 @@ file "#{MAUVE_DIR}/progressiveMauve" do
   end
 end
 
+task :grimm => [:env, GRIMM_DIR, "#{GRIMM_DIR}/grimm"]
+directory GRIMM_DIR
+file "#{GRIMM_DIR}/grimm" do
+  Dir.chdir(File.dirname(GRIMM_DIR)) do
+    system <<-SH
+      curl -L -o grimm.tar.gz 'http://grimm.ucsd.edu/DIST/GRIMM-2.01.tar.gz'
+      tar xvzf grimm.tar.gz
+      mv GRIMM-2.01/* #{Shellwords.escape(GRIMM_DIR)}
+      rm -rf GRIMM-2.01 grimm.tar.gz
+    SH
+  end
+  Dir.chdir(GRIMM_DIR){ system "make" }
+end
+
 file "pathogendb-comparison.png" => [:graph]
 desc "Generates a graph of tasks, intermediate files and their dependencies from this Rakefile"
 task :graph do
@@ -138,15 +156,13 @@ task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestral
 
 file "#{OUT_PREFIX}.fa" do |t|
   # First, performs whole genome alignment with Mugsy, producing a .maf file that we convert to .fa
-  path_file = ENV['IN_FOFN']
-  abort "FATAL: Task mugsy requires specifying IN_FOFN" unless path_file
+  abort "FATAL: Task mugsy requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task mugsy requires specifying OUTGROUP" unless ENV['OUTGROUP']
   
   mkdir_p "#{OUT}/log"
   
-  fofn = File.new(path_file)
-  paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{|f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mugsy.log", "log/mugsy.err.log")
   LSF.job_name "#{OUT_PREFIX}.fa"
@@ -271,8 +287,7 @@ task :mauve => [:check, "#{OUT_PREFIX}.xmfa", "#{OUT_PREFIX}.xmfa.backbone", "#{
 file "#{OUT_PREFIX}.xmfa.backbone" => "#{OUT_PREFIX}.xmfa"
 file "#{OUT_PREFIX}.xmfa.bbcols" => "#{OUT_PREFIX}.xmfa"
 file "#{OUT_PREFIX}.xmfa" do |t|
-  path_file = ENV['IN_FOFN']
-  abort "FATAL: Task mauve requires specifying IN_FOFN" unless path_file
+  abort "FATAL: Task mauve requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task mauve requires specifying OUT_PREFIX" unless OUT_PREFIX
   seed_weight = ENV['SEED_WEIGHT']
   abort "FATAL: Task mauve requires specifying SEED_WEIGHT" unless seed_weight
@@ -282,8 +297,7 @@ file "#{OUT_PREFIX}.xmfa" do |t|
   tree_directory = OUT
   mkdir_p "#{OUT}/log"
   
-  fofn = File.new(path_file)
-  paths = fofn.readlines.map{|f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{|f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mauve.log", "log/mauve.err.log")
   LSF.job_name "#{OUT_PREFIX}.xmfa"
@@ -291,4 +305,54 @@ file "#{OUT_PREFIX}.xmfa" do |t|
     #{MAUVE_DIR}/progressiveMauve --output=#{OUT_PREFIX}.xmfa --seed-weight=#{seed_weight} \
          --weight=#{lcb_weight} #{paths}
   SH
+end
+
+
+# ============
+# = sv_snv =
+# ============
+
+desc "Pairwise analysis of structural + single nucleotide changes between genomes"
+task :sv_snv => [:check, :sv_snv_check, "#{OUT_PREFIX}.sv_snv"]
+task :sv_snv_check do
+  abort "FATAL: Task sv_snv requires specifying IN_FOFN" unless IN_PATHS
+  abort "FATAL: Task sv_snv requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
+  abort "FATAL: Task sv_snv requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+  
+  genome_names = IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  unless genome_names.uniq.size == genome_names.size
+    abort "FATAL: Task sv_snv requires that all IN_FOFN filenames (with the extension removed) are unique"
+  end
+end
+
+# Setup, as dependencies for this task, all permutations of IN_FOFN genome names
+directory "#{OUT_PREFIX}.sv_snv"
+IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
+  directory "#{OUT_PREFIX}.sv_snv/#{genome_name}"
+  Rake::Task[:sv_snv].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
+end
+IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
+  genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  Rake::Task[:sv_snv].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.xmfa.backbone"]
+end
+
+# Mauve backbones show large-scale, structural variants between two genomes
+rule '.xmfa.backbone' do |task|
+  genomes = []
+  genomes[0] = {:name => task.to_s.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}
+  genomes[1] = {:name => task.to_s.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
+  genomes.each do |g| 
+    g[:path] = IN_PATHS.find{|path| path =~ /#{g[:name]}\.\w+$/ }
+  end
+  
+  LSF.set_out_err("log/sv_snv.log", "log/sv_snv.err.log")
+  LSF.job_name File.basename(task.to_s)
+  LSF.bsub_interactive <<-SH
+    #{MAUVE_DIR}/progressiveMauve --output=#{task} --seed-weight=#{ENV['SEED_WEIGHT']} \
+         --weight=#{ENV['LCB_WEIGHT']} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
+  SH
+end
+
+rule '.snv.bed' => '.xmfa.backbone' do |task|
+  
 end
