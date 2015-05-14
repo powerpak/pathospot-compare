@@ -18,8 +18,12 @@ GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 
 OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 
-IN_PATHS = ENV['IN_FOFN'] && File.new(ENV['IN_FOFN']).readlines.map(&:strip)
-IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
+begin
+  IN_PATHS = ENV['IN_FOFN'] && File.new(ENV['IN_FOFN']).readlines.map(&:strip)
+  IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
+rescue Errno::ENOENT
+  abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
+end
 
 #######
 # Other environment variables that may be set by the user for specific tasks (see README.md)
@@ -127,6 +131,7 @@ file "#{GRIMM_DIR}/grimm" do
       tar xvzf grimm.tar.gz
       mv GRIMM-2.01/* #{Shellwords.escape(GRIMM_DIR)}
       rm -rf GRIMM-2.01 grimm.tar.gz
+      sed -i.bak 's/-march=pentiumpro//g' #{Shellwords.escape(GRIMM_DIR)}/Makefile
     SH
   end
   Dir.chdir(GRIMM_DIR){ system "make" }
@@ -313,7 +318,7 @@ end
 # ============
 
 desc "Pairwise analysis of structural + single nucleotide changes between genomes"
-task :sv_snv => [:check, :sv_snv_check, "#{OUT_PREFIX}.sv_snv"]
+task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_files]
 task :sv_snv_check do
   abort "FATAL: Task sv_snv requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task sv_snv requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
@@ -325,22 +330,24 @@ task :sv_snv_check do
   end
 end
 
+SV_SNV_FILES = []
 # Setup, as dependencies for this task, all permutations of IN_FOFN genome names
 directory "#{OUT_PREFIX}.sv_snv"
 IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
   directory "#{OUT_PREFIX}.sv_snv/#{genome_name}"
-  Rake::Task[:sv_snv].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
+  Rake::Task[:sv_snv_check].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
-  Rake::Task[:sv_snv].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.xmfa.backbone"]
+  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.xmfa.backbone"
 end
+multitask :sv_snv_files => SV_SNV_FILES
 
 # Mauve backbones show large-scale, structural variants between two genomes
 rule '.xmfa.backbone' do |task|
   genomes = []
-  genomes[0] = {:name => task.to_s.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}
-  genomes[1] = {:name => task.to_s.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
+  genomes[0] = {:name => task.name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}
+  genomes[1] = {:name => task.name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
   genomes.each do |g| 
     g[:path] = IN_PATHS.find{|path| path =~ /#{g[:name]}\.\w+$/ }
   end
@@ -353,6 +360,9 @@ rule '.xmfa.backbone' do |task|
   SH
 end
 
-rule '.snv.bed' => '.xmfa.backbone' do |task|
-  
+rule '.grimm' => '.xmfa.backbone' do |task|
+  bb_file = task.name.sub(/\.grimm$/, '.xmfa.backbone')
+  system <<-SH
+    #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape bb_file} #{Shellwords.escape task.name}
+  SH
 end

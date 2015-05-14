@@ -4,7 +4,7 @@ class LSFClient
   
   DEFAULT_OPTIONS = {
     :R => "rusage[mem=4000]",
-    :m => "manda",
+    :m => "bode",
     :P => "acc_PBG",
     :W => "24:00",
     :L => "/bin/bash",
