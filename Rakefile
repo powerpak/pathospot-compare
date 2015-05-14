@@ -348,7 +348,7 @@ rule '.xmfa.backbone' do |task|
   LSF.set_out_err("log/sv_snv.log", "log/sv_snv.err.log")
   LSF.job_name File.basename(task.to_s)
   LSF.bsub_interactive <<-SH
-    #{MAUVE_DIR}/progressiveMauve --output=#{task} --seed-weight=#{ENV['SEED_WEIGHT']} \
+    #{MAUVE_DIR}/linux-x64/progressiveMauve --output=#{task} --seed-weight=#{ENV['SEED_WEIGHT']} \
          --weight=#{ENV['LCB_WEIGHT']} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
   SH
 end
