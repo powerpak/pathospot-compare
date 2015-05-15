@@ -8,6 +8,7 @@ include Colors
 task :default => :check
 
 LSF = LSFClient.new
+LSF.disable! if ENV['LSF_DISABLE']
 
 REPO_DIR = File.dirname(__FILE__)
 MUGSY_DIR = "#{REPO_DIR}/vendor/mugsy"
@@ -346,6 +347,7 @@ multitask :sv_snv_files => SV_SNV_FILES
 # Mauve backbones show large-scale, structural variants between two genomes
 rule '.xmfa.backbone' do |task|
   genomes = []
+  output = task.name.sub(/\.backbone$/, '')
   genomes[0] = {:name => task.name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}
   genomes[1] = {:name => task.name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
   genomes.each do |g| 
@@ -353,9 +355,12 @@ rule '.xmfa.backbone' do |task|
   end
   
   LSF.set_out_err("log/sv_snv.log", "log/sv_snv.err.log")
-  LSF.job_name File.basename(task.to_s)
-  LSF.bsub_interactive <<-SH
-    #{MAUVE_DIR}/linux-x64/progressiveMauve --output=#{task} --seed-weight=#{ENV['SEED_WEIGHT']} \
+  LSF.job_name File.basename(output)
+  
+  # TODO: progressiveMauve segfaults (signal 11) all the time. Seems to do it more often within bsub environment.
+  # have to figure out why? Isn't fatal, because it doesn't create the .backbone file if it fails like this, and so can simply re-run rake
+  system <<-SH
+    #{MAUVE_DIR}/linux-x64/progressiveMauve --output=#{output} --seed-weight=#{ENV['SEED_WEIGHT']} \
          --weight=#{ENV['LCB_WEIGHT']} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
   SH
 end

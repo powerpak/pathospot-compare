@@ -4,17 +4,18 @@ class LSFClient
   
   DEFAULT_OPTIONS = {
     :R => "rusage[mem=4000]",
-    :m => "bode",
+    :m => "bode mothra manda",
     :P => "acc_PBG",
     :W => "24:00",
     :L => "/bin/bash",
     :q => "premium",
     :R => "span[hosts=1]",
-    :n => 16
+    :n => 12
   }
   
   def initialize(options=nil)
     options ||= {}
+    @disabled = false
     @options = DEFAULT_OPTIONS.dup.merge(options)
   end
   
@@ -42,7 +43,13 @@ class LSFClient
     args.join ' '
   end
   
+  def enable!; @disabled = false; end
+  
+  def disable!; @disabled = true; end
+  
   def bsub(script, options=nil)
+    return system(script) if @disabled
+    
     cmd = %Q<bsub #{options_to_args(options)}>
     output = nil
     IO.popen(cmd, 'w+') do |subprocess|
@@ -52,8 +59,12 @@ class LSFClient
     end
   end
   
+  def bsub_wait(script, options=nil)
+    bsub(script, (options || {}).merge(:K => true))
+  end
+  
   def bsub_interactive(script, options=nil)
-    bsub(script, (options || {}).merge(:I => true, :tty => true))
+    bsub(script, (options || {}).merge(:Ip => true, :tty => true))
   end
   
 end
