@@ -4,6 +4,7 @@ require 'bio'
 require 'optparse'
 require 'shellwords'
 require 'tempfile'
+require 'pp'
 
 # Transcodes a progressiveMauve .backbone file into an ordered list of numerical genes
 # that GRIMM can use as input.
@@ -99,7 +100,10 @@ would be considered to be contiguous, which is an inaccurate assumption.
     fh.each_line do |seq_path|
       chrom_sizes = []
       seq_fh = Bio::FlatFile.auto(seq_path.strip)
-      seq_fh.each { |entry| chrom_sizes << 1 + entry.naseq.size + (chrom_sizes.last || 0) }
+      seq_fh.each_with_index do |entry, i| 
+        chr_pos = 1 + entry.naseq.size + (i > 0 ? chrom_sizes.last[:pos] : 0)
+        chrom_sizes << {:name => entry.definition.gsub('|', '_'), :pos => chr_pos}
+      end
       @seqs << chrom_sizes
     end
     fh.close
@@ -115,9 +119,9 @@ would be considered to be contiguous, which is an inaccurate assumption.
       next if row[0] == 0 && row[1] == 0
       next if row[2] == 0 && row[3] == 0
       # If we have chromosome boundaries, add them as required to the GRIMM numbered gene list
-      if @seqs && row[0].abs >= @seqs[0][chr_num]
+      if @seqs && row[0].abs >= @seqs[0][chr_num][:pos]
         @gene_orders[0] << '$'
-        chr_num += 1 until @seqs[0][chr_num] > row[0].abs
+        chr_num += 1 until @seqs[0][chr_num][:pos] > row[0].abs
       end
       
       gene_num += 1
@@ -132,9 +136,9 @@ would be considered to be contiguous, which is an inaccurate assumption.
       next if row[0] == 0 && row[1] == 0
       next if row[2] == 0 && row[3] == 0
       # If we have chromosome boundaries, add them as required to the GRIMM numbered gene list
-      if @seqs && row[2].abs >= @seqs[1][chr_num]
+      if @seqs && row[2].abs >= @seqs[1][chr_num][:pos]
         @gene_orders[1] << '$'
-        chr_num += 1 until @seqs[1][chr_num] > row[2].abs
+        chr_num += 1 until @seqs[1][chr_num][:pos] > row[2].abs
       end
       
       @gene_orders[1] << ((row[0] * row[2]) > 0 ? row[4] : -row[4])
@@ -177,8 +181,75 @@ would be considered to be contiguous, which is an inaccurate assumption.
       m = line.match(/Chrom. (\d+), gene (-?\d+) \[(-?\d+)\] through chrom. (\d+), gene (-?\d+) \[(-?\d+)\]:([\w ]+)/)
       @parsed[:rearrangements] << m.to_a.slice(1..-2).map(&:to_i).concat([m[-1].strip])
     end
-    p @parsed
-    p @backbone
+  end
+  
+  def collect_bed_data
+    # First, collect all presumptive insertions.  We will want to match them with deletions to create indels where possible.
+    insertions = @backbone.select{|row| row[0] == 0 && row[1] == 0 }
+    bed = {:indels => [], :inserts => [], :dels => []}
+    
+    # @backbone is sorted by row[0].abs to start.
+    # We are going iterate over all presumptive deletions
+    @backbone.each_with_index do |row, i|
+      next unless row[2] == 0 && row[3] == 0
+      prev = @backbone[i - 1]
+      after = @backbone[i + 1 % @backbone.size]
+      
+      # Look for an insertion that matches this deletion
+      if prev[4] && after[4] # implies that both rows have nonzero values in all columns
+        if prev[3].abs < after[2].abs
+          # Same orientation. If we find a matching insertion, we'll pair the insertion/deletion and call this an indel 
+          if insertions.delete([0, 0, prev[3].abs + 1, after[2].abs - 1])
+            bed[:indels] << [row[0], row[1] + 1, "ins(#{after[2].abs - prev[3].abs - 1})del(#{row[1] - row[0] + 1})", '+']
+            next
+          end
+        else
+          # Reverse orientation. Same as above.
+          if insertions.delete([0, 0, after[3].abs + 1, prev[2].abs - 1])
+            bed[:indels] << [row[0], row[1] + 1, "ins(#{prev[2].abs - after[3].abs - 1})del(#{row[1] - row[0] + 1})", '-']
+            next
+          end
+        end
+      end
+      
+      # No match. we'll call it a straight up deletion
+      bed[:dels] << [row[0], row[1] + 1, "del(#{row[1] - row[0] + 1})", '+']
+    end
+    
+    # Sort by the second genome now, and try to align the remaining insertions to the first genome
+    resorted = @backbone.sort_by{|row| row[2].abs }
+    resorted.each_with_index do |row, i|
+      next unless row[0] == 0 && row[1] == 0 && insertions.include?(row)
+      prev = resorted[i - 1]
+      after = resorted[i + 1 % @backbone.size]
+      
+      # If surrounding matches to the first genome are in the same orientation, and consecutive,
+      # this is a straight up insertion that is unambiguously alignable to the first genome
+      if prev[4] && after[4] && (prev[4] < 0 == after[4] < 0) && after[4] - prev[4] == 1
+        if after[4] > 0
+          del_size = after[0] - prev[1] - 1
+          bed[:inserts] << [prev[1] + 1, after[0], "ins(#{row[3] - row[2] + 1})", '+']
+        else
+          del_size = prev[0].abs - after[1].abs - 1
+          bed[:inserts] << [after[1].abs + 1, prev[0].abs, "ins(#{row[3] - row[2] + 1})", '+']
+        end
+      else
+        # No alignable match to the other genome, so it could align to either of two positions
+        possible_aligns = [prev[0] < 0 ? prev[0].abs : prev[1], after[0] < 0 ? after[1].abs : after[0]]
+        # Do we always pick one side? Dilemma
+        bed[:inserts] << [row[2], row[3]]
+      end
+    end
+    
+    pp bed
+    
+    bed
+  end
+  
+  def write_bed(bed_path = nil)
+    bed_path ||= @options[:bed]
+    fh = File.open(bed_path, 'w') rescue abort("FATAL: Could not open #{bed_path} for writing BED output")
+    bed_tracks = collect_bed_data
   end
   
   def run!
@@ -187,6 +258,7 @@ would be considered to be contiguous, which is an inaccurate assumption.
     extract_genes
     write_output
     run_grimm if @options[:grimm]
+    write_bed if @options[:bed]
   end
   
 end
