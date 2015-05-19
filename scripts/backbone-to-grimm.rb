@@ -115,20 +115,27 @@ assumption.
   
   def parse_genomes
     @seqs = []
+    @seq_names = []
     [@options[:ref], @options[:query]].each do |seq_path|
       chrom_sizes = []
+      @seq_names << File.basename(seq_path).sub(/\.\w+$/, '')
       seq_fh = Bio::FlatFile.auto(seq_path.strip) rescue abort("FATAL: Could not open -r/--ref parameter #{@options[:ref]}")
       seq_fh.each_with_index do |entry, i| 
-        chr_pos = 1 + entry.naseq.size + (i > 0 ? chrom_sizes.last[:pos] : 0)
-        chrom_sizes << {:name => entry.definition.gsub('|', '_'), :pos => chr_pos}
+        chr_end = 1 + entry.naseq.size + (i > 0 ? chrom_sizes.last[:end] : 0)
+        chrom_sizes << {:name => entry.definition.gsub('|', '_'), :end => chr_end}
       end
       @seqs << chrom_sizes
     end
   end
   
-  def ref_chr_pos(genome_pos)
-    chr_index = @seqs[0].index{|chr| chr[:pos] > genome_pos }
-    {:chr => @seqs[0][chr_index][:name], :pos => genome_pos - (chr_index > 0 ? @seqs[0][chr_index - 1][:pos] : 1)}
+  # Converts a pair of 1-based genomic coordinates as [left, right] representing a right-open range
+  # into a 0-based range mapped to a contig/chromosome and represented as [chr_name, left, right]
+  def ref_chr_range(genome_range)
+    chr_index = @seqs[0].index{|chr| chr[:end] > genome_range[0] }
+    chr_index ||= @seqs[0].size - 1
+    chr_start = chr_index > 0 ? @seqs[0][chr_index - 1][:end] : 1
+    chr_size = @seqs[0][chr_index][:end] - chr_start
+    [@seqs[0][chr_index][:name], [genome_range[0] - chr_start, 0].max, [genome_range[1] - chr_start, chr_size].min]
   end
   
   def extract_genes
@@ -141,9 +148,9 @@ assumption.
       next if row[0] == 0 && row[1] == 0
       next if row[2] == 0 && row[3] == 0
       # If we have chromosome boundaries, add them as required to the GRIMM numbered gene list
-      if @seqs && row[0].abs >= @seqs[0][chr_num][:pos]
+      if @seqs && row[0].abs >= @seqs[0][chr_num][:end]
         @gene_orders[0] << '$'
-        chr_num += 1 until @seqs[0][chr_num][:pos] > row[0].abs
+        chr_num += 1 until @seqs[0][chr_num][:end] > row[0].abs
       end
       
       gene_num += 1
@@ -158,9 +165,9 @@ assumption.
       next if row[0] == 0 && row[1] == 0
       next if row[2] == 0 && row[3] == 0
       # If we have chromosome boundaries, add them as required to the GRIMM numbered gene list
-      if @seqs && row[2].abs >= @seqs[1][chr_num][:pos]
+      if @seqs && row[2].abs >= @seqs[1][chr_num][:end]
         @gene_orders[1] << '$'
-        chr_num += 1 until @seqs[1][chr_num][:pos] > row[2].abs
+        chr_num += 1 until @seqs[1][chr_num][:end] > row[2].abs
       end
       
       @gene_orders[1] << ((row[0] * row[2]) > 0 ? row[4] : -row[4])
@@ -193,36 +200,37 @@ assumption.
     bed_tracks = collect_bed_data
     @color_i = -1
     # The BED format is tab-delimited, and defined here: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
-    
-    fh.puts "track name=\"aligned_indels\" description=\"aligned insertions, deletions, and indels\" itemRgb=\"on\""
+        
+    fh.puts "track name=\"#{@seq_names[1]}_indels\" description=\"aligned insertions, deletions, and indels\" itemRgb=\"on\""
     {:indels => '0,0,0', :dels => '127,0,0', :inserts => '0,127,0'}.each do |type, color|
       bed_tracks[type].each do |row|
-        left, right = row[0..1].map{|genome_pos| ref_chr_pos(genome_pos) }
+        chr_name, left, right = ref_chr_range(row[0..1])
         # chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd, itemRgb
-        fh.puts [left[:chr], left[:pos], right[:pos], row[2], '0', row[3], left[:pos], right[:pos], color].join("\t")
+        fh.puts [chr_name, left, right, row[2], '0', row[3], left, right, color].join("\t")
       end
     end
         
-    fh.puts "track name=\"rearrangements\" description=\"aligned rearrangement points\" itemRgb=\"on\""
+    fh.puts "track name=\"#{@seq_names[1]}_rearrange\" description=\"aligned rearrangement points\" itemRgb=\"on\""
     bed_tracks[:rearrangements].each do |pair|
       if pair.size > 1
         # Rearrangement with two flanking regions (reversals, translocations)
         write_bed_pair(fh, pair)
       else 
         # Rearrangement with one flanking region (fission)
-        left, right = pair.first[0..1].map{|genome_pos| ref_chr_pos(genome_pos) }
+        chr_name, left, right = ref_chr_range(pair.first[0..1])
         # chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd, itemRgb
-        bed_line = [left[:chr], left[:pos], right[:pos], pair.first[2], '0', pair.first[3], left[:pos], right[:pos], '0,0,0']
+        bed_line = [chr_name, left, right, pair.first[2], '0', pair.first[3], left, right, '0,0,0']
         # blockCount, blockSizes, blockStarts
         bed_line += [1, "#{pair.first[1] - pair.first[0]},", '0,']
         fh.puts bed_line.join("\t")
       end
     end
     
-    fh.puts "track name=\"ambig_inserts\" descripton=\"insertions that couldn't be aligned to the reference\" itemRgb=\"on\""
+    fh.puts "track name=\"#{@seq_names[1]}_ambig_ins\" descripton=\"insertions that couldn't be aligned to the reference\" itemRgb=\"on\""
     bed_tracks[:ambig_inserts].each do |pair|
       write_bed_pair(fh, pair)
     end
+    fh.close
   end
   
   def run!
@@ -331,7 +339,6 @@ assumption.
       end
     end
         
-    abort
     @parsed[:rearrangements].each_with_index do |rearrange, i|
       genes = [rearrange[2], rearrange[5]].sort_by{|v| v.abs }
       
@@ -339,9 +346,10 @@ assumption.
       flank_regions = genes.each_with_index.map do |gene, j|
         backbone_row = @backbone.find{|row| row[4] == gene.abs }
         
-        # Fission events can map to non-existent gene numbers.
-        next if !backbone_row && rearrange[6] == 'Fission'
-        raise "Invalid gene number" if !backbone_row
+        # Fission, fusion, and translocation events can map to non-existent gene numbers, which
+        # means that they involve one of the "caps" on a contig/chromosome.
+        next if !backbone_row && ['Fission', 'Fusion', 'Translocation'].include?(rearrange[6])
+        raise "Invalid gene number #{rearrange.join(' ')} #{@backbone.max_by{|row| row[4] ? row[4].abs : 0}}" if !backbone_row
         
         if (gene > 0 && j == 0) || (gene < 0 && j == 1)
           # We need to look at the previous flanking region in the original gene order
@@ -371,22 +379,26 @@ assumption.
   # otherwise, they are represented as similarly colored blocks.
   def write_bed_pair(fh, pair)
     pair.sort_by!{|p| p[0] }
-    first_left = ref_chr_pos(pair[0][0])
-    second_right = ref_chr_pos(pair[1][1])
-    if first_left[:chr] == ref_chr_pos(pair[1][0])[:chr]
+    
+    first = {}
+    second = {}
+    first[:chr], first[:left], first[:right] = ref_chr_range(pair[0])
+    second[:chr], second[:left], second[:right] = ref_chr_range(pair[1])
+    
+    if first[:chr] == second[:chr]
       # Paired points are on the same contig/chromosome, can connect directly.
       # chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd
-      row = [first_left[:chr], first_left[:pos], second_right[:pos], pair[0][2], '0', '+', first_left[:pos], second_right[:pos]]
+      row = [first[:chr], first[:left], second[:right], pair[0][2], '0', '+', first[:left], second[:right]]
       # itemRgb, blockCount, blockSizes, blockStarts
       row += ['0,0,0', 2, [pair[0][1] - pair[0][0], pair[1][1] - pair[1][0]].join(','), [0, pair[1][0] - pair[0][0]].join(',')]
       fh.puts(row.join("\t"))
     else
       # Rearrangment points are not on the same contig/chromosome, must connect visually with same color
       color = COL_20[@color_i = (@color_i + 1) % COL_20.size]
-      row = [first_left[:chr], first_left[:pos], first_left[:pos], pair[0][2], '0', pair[0][3], first_left[:pos], first_left[:pos]]
+      row = [first[:chr], first[:left], first[:right], pair[0][2], '0', pair[0][3], first[:left], first[:right]]
       row += [color, 1, "#{pair[0][1] - pair[0][0]},", '0,']
       fh.puts(row.join("\t"))
-      row = [second_left[:chr], second_left[:pos], second_right[:pos], pair[1][2], '0', pair[0][3], second_left[:pos], second_right[:pos]]
+      row = [second[:chr], second[:left], second[:right], pair[1][2], '0', pair[0][3], second[:left], second[:right]]
       row += [color, 1, "#{pair[1][1] - pair[1][0]},", '0,']
       fh.puts(row.join("\t"))
     end

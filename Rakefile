@@ -342,7 +342,8 @@ IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.bed"
 end
-task :sv_snv_files => SV_SNV_FILES
+
+multitask :sv_snv_files => SV_SNV_FILES
 
 def genomes_from_task_name(task_name)
   genomes = [{:name => task_name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}]
@@ -375,7 +376,7 @@ rule '.bed' => '.xmfa.backbone' do |task|
   backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
   grimm_file = task.name.sub(/\.bed$/, '.grimm')
   
-  system <<-SH
+  system <<-SH or abort
     #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape backbone_file} \
         --ref #{Shellwords.escape genomes[0][:path]} \
         --query #{Shellwords.escape genomes[1][:path]} \
