@@ -340,19 +340,23 @@ IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do 
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
-  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.xmfa.backbone"
+  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.bed"
 end
-multitask :sv_snv_files => SV_SNV_FILES
+task :sv_snv_files => SV_SNV_FILES
 
-# Mauve backbones show large-scale, structural variants between two genomes
-rule '.xmfa.backbone' do |task|
-  genomes = []
-  output = task.name.sub(/\.backbone$/, '')
-  genomes[0] = {:name => task.name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}
-  genomes[1] = {:name => task.name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
+def genomes_from_task_name(task_name)
+  genomes = [{:name => task_name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}]
+  genomes[1] = {:name => task_name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
   genomes.each do |g| 
     g[:path] = IN_PATHS.find{|path| path =~ /#{g[:name]}\.\w+$/ }
   end
+  genomes
+end
+
+# Mauve backbones show large-scale, structural variants between two genomes
+rule '.xmfa.backbone' do |task|
+  genomes = genomes_from_task_name(task.name)
+  output = task.name.sub(/\.backbone$/, '')
   
   LSF.set_out_err("log/sv_snv.log", "log/sv_snv.err.log")
   LSF.job_name File.basename(output)
@@ -365,9 +369,18 @@ rule '.xmfa.backbone' do |task|
   SH
 end
 
-rule '.grimm' => '.xmfa.backbone' do |task|
-  bb_file = task.name.sub(/\.grimm$/, '.xmfa.backbone')
+# We create BED files that can visually depict these structural variants
+rule '.bed' => '.xmfa.backbone' do |task|
+  genomes = genomes_from_task_name(task.name)
+  backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
+  grimm_file = task.name.sub(/\.bed$/, '.grimm')
+  
   system <<-SH
-    #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape bb_file} #{Shellwords.escape task.name}
+    #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape backbone_file} \
+        --ref #{Shellwords.escape genomes[0][:path]} \
+        --query #{Shellwords.escape genomes[1][:path]} \
+        --grimm #{GRIMM_DIR}/grimm \
+        --bed #{Shellwords.escape task.name} \
+        #{Shellwords.escape grimm_file}
   SH
 end

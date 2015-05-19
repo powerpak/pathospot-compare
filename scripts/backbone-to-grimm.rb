@@ -16,6 +16,14 @@ require 'pp'
 #
 # NOTE: This currently only handles .backbone files for two genomes.
 
+
+# 20 colors that are used to distinguish paired items in the BED output
+
+COL_20 = ['31,119,180' , '255,127,14' , '44,160,44'  , '214,39,40'  , '148,103,189',
+          '140,86,75'  , '227,119,194', '127,127,127', '188,189,34' , '23,190,207' ,
+          '174,199,232', '255,187,120', '152,223,138', '255,152,150', '197,176,213',
+          '196,156,148', '247,182,210', '199,199,199', '219,219,141', '158,218,229']
+
 class MauveBackboneToGrimm
   
   # Set up the tran
@@ -28,21 +36,32 @@ class MauveBackboneToGrimm
 Usage: #{$0} -f in.fofn [options] in.xmfa.backbone [out.grimm]
 
 Transcodes a progressiveMauve .backbone file into an ordered list of numerical genes
-that GRIMM can use as input. Optionally, if provided with the path to GRIMM, this can
-run GRIMM, parse the output, and convert the result to other formats.
+that GRIMM can use as input. Optionally, if provided with the path to GRIMM, this
+can run GRIMM, parse the output, and convert the result to other formats.
 
-You *must* provide an -f/--fofn argument pointing to a file of file names for the
-original FASTA sequences, which will be consulted for contig or chromosome lengths
-allowing multichromosomal analysis of rearrangements by GRIMM. Otherwise, the genomes
-would be considered to be contiguous, which is an inaccurate assumption.
+**NOTE**: this currently only processes progressiveMauve alignments between 2 genomes.
+
+You *must* provide an -r/--ref argument pointing to the sequence for the reference
+genome (seq0 in the .backbone), and a -q/--query argument pointing to the sequence
+for the query genome (seq1 in the .backbone), which will be consulted for contig or
+chromosome lengths allowing multichromosomal analysis of rearrangements by GRIMM.
+Otherwise, the genomes would be considered to be contiguous, which is an inaccurate
+assumption.
+
+
       USAGE
 
       opts.separator ""
       opts.separator "Required options:"
       
-      opts.on("-f", "--fofn [PATH]",
-              "Path to the file of filenames (FOFN) for sequences aligned in the .xmfa.backbone") do |path|
-        @options[:fofn] = path
+      opts.on("-r", "--ref [PATH]",
+              "Path to the filename for seq0 (the reference genome) in the .xmfa.backbone") do |path|
+        @options[:ref] = path
+      end
+      
+      opts.on("-q", "--query [PATH]",
+              "Path to the filename for seq0 (the reference genome) in the .xmfa.backbone") do |path|
+        @options[:query] = path
       end
 
       opts.separator ""
@@ -72,7 +91,8 @@ would be considered to be contiguous, which is an inaccurate assumption.
       abort opt_parser.help
     end
     
-    abort "FATAL: -f/--fofn parameter is required" + opt_parser.help unless @options[:fofn]
+    abort "FATAL: -r/--ref parameter is required" + opt_parser.help unless @options[:ref]
+    abort "FATAL: -q/--query parameter is required" + opt_parser.help unless @options[:query]
         
     @backbone_file = File.new(args.first) rescue abort("FATAL: Could not open #{args.first}")
     @out = STDOUT
@@ -93,20 +113,22 @@ would be considered to be contiguous, which is an inaccurate assumption.
     end
   end
   
-  def parse_fofn(fofn_path = nil)
-    fofn_path ||= @options[:fofn]
+  def parse_genomes
     @seqs = []
-    fh = File.open(fofn_path) rescue abort("FATAL: Could not open --fofn parameter #{fofn_path}")
-    fh.each_line do |seq_path|
+    [@options[:ref], @options[:query]].each do |seq_path|
       chrom_sizes = []
-      seq_fh = Bio::FlatFile.auto(seq_path.strip)
+      seq_fh = Bio::FlatFile.auto(seq_path.strip) rescue abort("FATAL: Could not open -r/--ref parameter #{@options[:ref]}")
       seq_fh.each_with_index do |entry, i| 
         chr_pos = 1 + entry.naseq.size + (i > 0 ? chrom_sizes.last[:pos] : 0)
         chrom_sizes << {:name => entry.definition.gsub('|', '_'), :pos => chr_pos}
       end
       @seqs << chrom_sizes
     end
-    fh.close
+  end
+  
+  def ref_chr_pos(genome_pos)
+    chr_index = @seqs[0].index{|chr| chr[:pos] > genome_pos }
+    {:chr => @seqs[0][chr_index][:name], :pos => genome_pos - (chr_index > 0 ? @seqs[0][chr_index - 1][:pos] : 1)}
   end
   
   def extract_genes
@@ -151,6 +173,7 @@ would be considered to be contiguous, which is an inaccurate assumption.
       fh.puts ">seq#{i}"
       fh.puts row.join " "
     end
+    fh.close
   end
   
   def run_grimm
@@ -163,8 +186,61 @@ would be considered to be contiguous, which is an inaccurate assumption.
       parse_grimm `#{Shellwords.escape @options[:grimm]} -f #{Shellwords.escape @out_path}`
     end
   end
+    
+  def write_bed(bed_path = nil)
+    bed_path ||= @options[:bed]
+    fh = File.open(bed_path, 'w') rescue abort("FATAL: Could not open #{bed_path} for writing BED output")
+    bed_tracks = collect_bed_data
+    @color_i = -1
+    # The BED format is tab-delimited, and defined here: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
+    
+    fh.puts "track name=\"aligned_indels\" description=\"aligned insertions, deletions, and indels\" itemRgb=\"on\""
+    {:indels => '0,0,0', :dels => '127,0,0', :inserts => '0,127,0'}.each do |type, color|
+      bed_tracks[type].each do |row|
+        left, right = row[0..1].map{|genome_pos| ref_chr_pos(genome_pos) }
+        # chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd, itemRgb
+        fh.puts [left[:chr], left[:pos], right[:pos], row[2], '0', row[3], left[:pos], right[:pos], color].join("\t")
+      end
+    end
+        
+    fh.puts "track name=\"rearrangements\" description=\"aligned rearrangement points\" itemRgb=\"on\""
+    bed_tracks[:rearrangements].each do |pair|
+      if pair.size > 1
+        # Rearrangement with two flanking regions (reversals, translocations)
+        write_bed_pair(fh, pair)
+      else 
+        # Rearrangement with one flanking region (fission)
+        left, right = pair.first[0..1].map{|genome_pos| ref_chr_pos(genome_pos) }
+        # chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd, itemRgb
+        bed_line = [left[:chr], left[:pos], right[:pos], pair.first[2], '0', pair.first[3], left[:pos], right[:pos], '0,0,0']
+        # blockCount, blockSizes, blockStarts
+        bed_line += [1, "#{pair.first[1] - pair.first[0]},", '0,']
+        fh.puts bed_line.join("\t")
+      end
+    end
+    
+    fh.puts "track name=\"ambig_inserts\" descripton=\"insertions that couldn't be aligned to the reference\" itemRgb=\"on\""
+    bed_tracks[:ambig_inserts].each do |pair|
+      write_bed_pair(fh, pair)
+    end
+  end
   
+  def run!
+    parse_genomes
+    parse_input
+    extract_genes
+    write_output
+    run_grimm if @options[:grimm]
+    write_bed if @options[:bed]
+  end
+  
+  private
+  
+  # Parses GRIMM's output into a hash of data values.
+  # Rearrangements for the "optimal sequence" are parsed into an ordered array of arrays, each of the form:
+  # [chr_1_num, gene_1_pos, gene_1_num, chr_2_num, gene_2_pos, gene_2_num, operation]
   def parse_grimm(grimm_output)
+    @grimm_output = grimm_output
     @parsed = {:rearrangements => []}
     parts = grimm_output.split('======================================================================')
     parts.first.split(/\n/).each do |line|
@@ -175,7 +251,6 @@ would be considered to be contiguous, which is an inaccurate assumption.
     parts[2].split(/\n/).each do |line|
       # Parse lines of the form:
       # Step 1: Chrom. 1, gene 587 [587] through chrom. 1, gene 591 [591]: Reversal
-      # into an orderly array of rearrangement
       next unless line =~ /^Step (\d)+:/
       next if $1.to_i == 0
       m = line.match(/Chrom. (\d+), gene (-?\d+) \[(-?\d+)\] through chrom. (\d+), gene (-?\d+) \[(-?\d+)\]:([\w ]+)/)
@@ -183,10 +258,20 @@ would be considered to be contiguous, which is an inaccurate assumption.
     end
   end
   
+  # Collect all the information parsed out of the .backbone and the GRIMM output into BED track data
+  # that summarizes insertions, deletions, indels, and rearrangements
+  #
+  # NOTE: all the regions returned by this function are RIGHT OPEN, e.g. [0, 1) is 1 base long, unlike .backbone format
   def collect_bed_data
     # First, collect all presumptive insertions.  We will want to match them with deletions to create indels where possible.
     insertions = @backbone.select{|row| row[0] == 0 && row[1] == 0 }
-    bed = {:indels => [], :inserts => [], :dels => []}
+    # This is the form of the returned data
+    bed = {
+      # One array of BED data per feature
+      :indels => [], :inserts => [], :dels => [], 
+      # One pair of arrays of BED data (contained in their own array) per feature
+      :ambig_inserts => [], :rearrangements => []
+    }
     
     # @backbone is sorted by row[0].abs to start.
     # We are going iterate over all presumptive deletions
@@ -223,42 +308,88 @@ would be considered to be contiguous, which is an inaccurate assumption.
       prev = resorted[i - 1]
       after = resorted[i + 1 % @backbone.size]
       
-      # If surrounding matches to the first genome are in the same orientation, and consecutive,
-      # this is a straight up insertion that is unambiguously alignable to the first genome
-      if prev[4] && after[4] && (prev[4] < 0 == after[4] < 0) && after[4] - prev[4] == 1
-        if after[4] > 0
-          del_size = after[0] - prev[1] - 1
-          bed[:inserts] << [prev[1] + 1, after[0], "ins(#{row[3] - row[2] + 1})", '+']
+      if prev[4] && after[4] # implies that both rows have nonzero values in all columns
+        # If surrounding matches to the first genome are in the same orientation, and consecutive,
+        # this is a straight up insertion that is unambiguously alignable to the first genome
+        if (prev[4] < 0 == after[4] < 0) && after[4] - prev[4] == 1
+          if after[4] > 0
+            del_size = after[0] - prev[1] - 1
+            bed[:inserts] << [prev[1] + 1, after[0], "ins(#{row[3] - row[2] + 1})", '+']
+          else
+            del_size = prev[0].abs - after[1].abs - 1
+            bed[:inserts] << [after[1].abs + 1, prev[0].abs, "ins(#{row[3] - row[2] + 1})", '+']
+          end
         else
-          del_size = prev[0].abs - after[1].abs - 1
-          bed[:inserts] << [after[1].abs + 1, prev[0].abs, "ins(#{row[3] - row[2] + 1})", '+']
+          # No alignable match to the other genome, so it could align to either of two positions
+          possible_aligns = [prev[0] < 0 ? prev[0].abs : prev[1], after[0] < 0 ? after[1].abs : after[0]]
+          
+          # Do we always pick one side? Dilemma
+          bed[:ambig_inserts] << possible_aligns.map do |aln|
+            [aln - 1, aln + 1, "ambig-#{bed[:ambig_inserts].size + 1}-ins(#{row[3] - row[2] + 1})", '+']
+          end
         end
-      else
-        # No alignable match to the other genome, so it could align to either of two positions
-        possible_aligns = [prev[0] < 0 ? prev[0].abs : prev[1], after[0] < 0 ? after[1].abs : after[0]]
-        # Do we always pick one side? Dilemma
-        bed[:inserts] << [row[2], row[3]]
       end
     end
-    
-    pp bed
+        
+    abort
+    @parsed[:rearrangements].each_with_index do |rearrange, i|
+      genes = [rearrange[2], rearrange[5]].sort_by{|v| v.abs }
+      
+      # For the genes involved in the rearrangement, get the flanking indel/deletion region
+      flank_regions = genes.each_with_index.map do |gene, j|
+        backbone_row = @backbone.find{|row| row[4] == gene.abs }
+        
+        # Fission events can map to non-existent gene numbers.
+        next if !backbone_row && rearrange[6] == 'Fission'
+        raise "Invalid gene number" if !backbone_row
+        
+        if (gene > 0 && j == 0) || (gene < 0 && j == 1)
+          # We need to look at the previous flanking region in the original gene order
+          adj_indel_or_del = (bed[:indels] + bed[:dels] + bed[:inserts]).find{|row| row[1] == backbone_row[0].abs }
+          # If we couldn't find one, just use the end of the gene
+          adj_indel_or_del ||= [backbone_row[0].abs - 1, backbone_row[0].abs + 1]  
+        else
+          # Following flanking region
+          adj_indel_or_del = (bed[:indels] + bed[:dels] + bed[:inserts]).find{|row| row[0] == backbone_row[1].abs + 1 }
+          adj_indel_or_del ||= [backbone_row[1].abs, backbone_row[1].abs + 2]
+        end
+      end
+      
+      # Fission events can have only one flanking region.
+      flank_regions.compact!
+      
+      bed[:rearrangements] << flank_regions.map do |flank_regions|
+        [flank_regions[0], flank_regions[1], "#{rearrange[6].downcase}-#{i + 1}", '+']
+      end
+    end
     
     bed
   end
   
-  def write_bed(bed_path = nil)
-    bed_path ||= @options[:bed]
-    fh = File.open(bed_path, 'w') rescue abort("FATAL: Could not open #{bed_path} for writing BED output")
-    bed_tracks = collect_bed_data
-  end
-  
-  def run!
-    parse_fofn
-    parse_input
-    extract_genes
-    write_output
-    run_grimm if @options[:grimm]
-    write_bed if @options[:bed]
+  # Writes BED rows for paired features. If on the same contig/chromosome,
+  # they are represented as a single feature with blocks and an intron line connecting them;
+  # otherwise, they are represented as similarly colored blocks.
+  def write_bed_pair(fh, pair)
+    pair.sort_by!{|p| p[0] }
+    first_left = ref_chr_pos(pair[0][0])
+    second_right = ref_chr_pos(pair[1][1])
+    if first_left[:chr] == ref_chr_pos(pair[1][0])[:chr]
+      # Paired points are on the same contig/chromosome, can connect directly.
+      # chrom, chromStart, chromEnd, name, score, strand, thickStart, thickEnd
+      row = [first_left[:chr], first_left[:pos], second_right[:pos], pair[0][2], '0', '+', first_left[:pos], second_right[:pos]]
+      # itemRgb, blockCount, blockSizes, blockStarts
+      row += ['0,0,0', 2, [pair[0][1] - pair[0][0], pair[1][1] - pair[1][0]].join(','), [0, pair[1][0] - pair[0][0]].join(',')]
+      fh.puts(row.join("\t"))
+    else
+      # Rearrangment points are not on the same contig/chromosome, must connect visually with same color
+      color = COL_20[@color_i = (@color_i + 1) % COL_20.size]
+      row = [first_left[:chr], first_left[:pos], first_left[:pos], pair[0][2], '0', pair[0][3], first_left[:pos], first_left[:pos]]
+      row += [color, 1, "#{pair[0][1] - pair[0][0]},", '0,']
+      fh.puts(row.join("\t"))
+      row = [second_left[:chr], second_left[:pos], second_right[:pos], pair[1][2], '0', pair[0][3], second_left[:pos], second_right[:pos]]
+      row += [color, 1, "#{pair[1][1] - pair[1][0]},", '0,']
+      fh.puts(row.join("\t"))
+    end
   end
   
 end
