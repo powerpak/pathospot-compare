@@ -78,7 +78,7 @@ Output will be found as files starting with "RAxML_" in your `OUT` directory, wi
 
 #### sv_snv
 
-`rake sv_snv` attempts to create annotation tracks in [BED format] that contain the likely structural variants---insertions, deletions, and rearrangements---that differentiate each pair of genomes in your `IN_FOFN`.  (Soon, it will include SNVs in the output as well, hence the name of the task).
+`rake sv_snv` attempts to create annotation tracks in [BED format] that contain the likely structural variants—insertions, deletions, and rearrangements—that differentiate each pair of genomes in your `IN_FOFN`.  (Soon, it will include SNVs in the output as well, hence the name of the task).
 
 To do this, for each pair of genomes a [Mauve] alignment is created, which is then parsed for [locally collinear blocks][lcbs] (LCBs) which are considered the "core genome" for the pair.  Blocks unique to one or the other genome ("islands" in Mauve terminology) are considered insertions and deletions, and then [GRIMM] is used to determine the minimal number of inversions, translocations, fusions and fissions that could reorder the LCBs in the first genome to produce the second.  These are all depicted as features in a BED track, using either connected "exons" (fat blocks) or shared color to depict the pairs of LCBs involved in an inversion (BED features cannot split over multiple contigs).
 
