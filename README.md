@@ -36,11 +36,11 @@ If a required environment variable isn't present when a task is run and there is
 Variable             | Required by                           | Default | Purpose
 ---------------------|---------------------------------------|---------|-----------------------------------
 `OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
-`IN_FOFN`            | `mugsy` `mauve`                       | (none)  | A file containing filenames that will be processed as input
-`OUT_PREFIX`         | `mugsy` `mugsy_plot` `mauve`          | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
+`IN_FOFN`            | `mugsy` `mauve` `sv_snv`              | (none)  | A file containing filenames that will be processed as input
+`OUT_PREFIX`         | `mugsy` `mugsy_plot` `mauve` `sv_snv` | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
-`SEED_WEIGHT`        | `mauve`                               | (none)  | Use this seed weight for calculating initial anchors
-`LCB_WEIGHT`         | `mauve`                               | (none)  | Minimum pairwise LCB score
+`SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
+`LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
 
 According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
 
@@ -71,6 +71,14 @@ Output will be found as files starting with "RAxML_" in your `OUT` directory, wi
 #### mauve
 
 `rake mauve` requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `LCB_WEIGHT` environment variables. See [Environment variables](#environment-variables) for a description of each.
+
+`IN_FOFN` is a file containing the full paths (one per line) to FASTA files containing contigs for whole genome sequences that you intend to compare with [Mauve].
+
+[Mauve]: http://asap.genetics.wisc.edu/software/mauve/
+
+#### sv_snv
+
+`rake sv_snv` requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `LCB_WEIGHT` environment variables. See [Environment variables](#environment-variables) for a description of each.
 
 `IN_FOFN` is a file containing the full paths (one per line) to FASTA files containing contigs for whole genome sequences that you intend to compare with [Mauve].
 
