@@ -322,7 +322,7 @@ assumption.
         if (prev[4] < 0 == after[4] < 0) && after[4] - prev[4] == 1
           if after[4] > 0  # positive orientation
             del_size = after[0] - prev[1] - 1
-            # We need to adjust the second coordinate on inserts because we can't have a 0-length BED feature
+            # We need to potentially adjust the second coordinate on inserts because we can't have a 0-length BED feature
             bed[:inserts] << [prev[1] + 1, [after[0], prev[1] + 2].max, "ins(#{row[3] - row[2] + 1})", '+']
           else
             del_size = prev[0].abs - after[1].abs - 1
