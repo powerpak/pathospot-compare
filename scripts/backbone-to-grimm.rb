@@ -320,12 +320,13 @@ assumption.
         # If surrounding matches to the first genome are in the same orientation, and consecutive,
         # this is a straight up insertion that is unambiguously alignable to the first genome
         if (prev[4] < 0 == after[4] < 0) && after[4] - prev[4] == 1
-          if after[4] > 0
+          if after[4] > 0  # positive orientation
             del_size = after[0] - prev[1] - 1
-            bed[:inserts] << [prev[1] + 1, after[0], "ins(#{row[3] - row[2] + 1})", '+']
+            # We need to adjust the second coordinate on inserts because we can't have a 0-length BED feature
+            bed[:inserts] << [prev[1] + 1, [after[0], prev[1] + 2].max, "ins(#{row[3] - row[2] + 1})", '+']
           else
             del_size = prev[0].abs - after[1].abs - 1
-            bed[:inserts] << [after[1].abs + 1, prev[0].abs, "ins(#{row[3] - row[2] + 1})", '+']
+            bed[:inserts] << [after[1].abs + 1, [prev[0].abs, after[1].abs + 2].max, "ins(#{row[3] - row[2] + 1})", '+']
           end
         else
           # No alignable match to the other genome, so it could align to either of two positions
