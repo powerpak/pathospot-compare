@@ -20,7 +20,7 @@ GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 
 begin
-  IN_PATHS = ENV['IN_FOFN'] && File.new(ENV['IN_FOFN']).readlines.map(&:strip)
+  IN_PATHS = ENV['IN_FOFN'] && File.new(ENV['IN_FOFN']).readlines.map(&:strip).reject(&:empty?)
   IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 rescue Errno::ENOENT
   abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
