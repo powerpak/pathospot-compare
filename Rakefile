@@ -175,7 +175,7 @@ file "#{OUT_PREFIX}.fa" do |t|
   LSF.bsub_interactive <<-SH
     export MUGSY_INSTALL=#{MUGSY_DIR} &&
     #{MUGSY_DIR}/mugsy -p #{OUT_PREFIX} --directory #{OUT} #{paths} &&
-    perl #{REPO_DIR}/scripts/processMAF_File.pl #{OUT_PREFIX}.maf > #{OUT_PREFIX}.fa
+    python #{REPO_DIR}/scripts/maf2fasta.py #{OUT_PREFIX}.maf #{OUT_PREFIX}.fa `sort '#{ENV['IN_FOFN']}' | uniq | wc -l`
   SH
 end
 
