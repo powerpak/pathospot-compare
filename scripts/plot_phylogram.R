@@ -18,4 +18,6 @@ if (max(my_tree$edge.length) > 6000) {
 }
 
 plot(my_tree)
+tree_order<-my_tree$tip.label[order(.PlotPhyloEnv$last_plot.phylo$yy[1:.PlotPhyloEnv$last_plot.phylo$Ntip])]
+write.table(tree_order,"tree_order.txt",quote=FALSE,row.names=FALSE,col.names=FALSE)
 edgelabels(round(my_tree$edge.length * scaling, 3), adj = c(0.5, -0.25), cex=0.7, frame="none")
