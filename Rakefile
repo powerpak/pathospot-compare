@@ -17,10 +17,11 @@ RAXML_DIR = "#{REPO_DIR}/vendor/raxml"
 MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 
-OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 
 begin
-  IN_PATHS = ENV['IN_FOFN'] && File.new(ENV['IN_FOFN']).readlines.map(&:strip).reject(&:empty?)
+  IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
   IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 rescue Errno::ENOENT
   abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
@@ -175,7 +176,7 @@ file "#{OUT_PREFIX}.fa" do |t|
   LSF.bsub_interactive <<-SH
     export MUGSY_INSTALL=#{MUGSY_DIR} &&
     #{MUGSY_DIR}/mugsy -p #{OUT_PREFIX} --directory #{OUT} #{paths} &&
-    python #{REPO_DIR}/scripts/maf2fasta.py #{OUT_PREFIX}.maf #{OUT_PREFIX}.fa `sort '#{ENV['IN_FOFN']}' | uniq | wc -l`
+    python #{REPO_DIR}/scripts/maf2fasta.py #{OUT_PREFIX}.maf #{OUT_PREFIX}.fa `sort '#{IN_FOFN}' | uniq | wc -l`
   SH
 end
 
