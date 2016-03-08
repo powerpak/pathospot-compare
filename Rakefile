@@ -198,7 +198,7 @@ file "#{OUT_PREFIX}_1.fa-gb.phy" => "#{OUT_PREFIX}_1.fa" do |t|
   LSF.set_out_err("log/mugsy_phy.log", "log/mugsy_phy.err.log")
   LSF.job_name "#{OUT_PREFIX}_1.fa-gb.phy"
   LSF.bsub_interactive <<-SH
-  /sc/orga/projects/InfectiousDisease/tools/Gblocks_0.91b/Gblocks #{OUT_PREFIX}_1.fa -t=d -b5=a
+  /sc/orga/projects/InfectiousDisease/tools/Gblocks_0.91b/Gblocks #{OUT_PREFIX}_1.fa -t=d -b5=a -b4=1000
   mv #{OUT_PREFIX}_1.fa-gb #{OUT_PREFIX}_1.fa-gb.fasta
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
     #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{OUT_PREFIX}_1.fa-gb.fasta -output=phylip
