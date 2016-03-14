@@ -191,19 +191,21 @@ file "#{OUT_PREFIX}_1.fa" => "#{OUT_PREFIX}.fa" do |t|
   SH
 end
 
-file "#{OUT_PREFIX}_1.phy" => "#{OUT_PREFIX}_1.fa" do |t|
+file "#{OUT_PREFIX}_1.fa-gb.phy" => "#{OUT_PREFIX}_1.fa" do |t|
   abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
   
   mkdir_p "#{OUT}/log"
   LSF.set_out_err("log/mugsy_phy.log", "log/mugsy_phy.err.log")
-  LSF.job_name "#{OUT_PREFIX}_1.phy"
+  LSF.job_name "#{OUT_PREFIX}_1.fa-gb.phy"
   LSF.bsub_interactive <<-SH
+  /sc/orga/projects/InfectiousDisease/tools/Gblocks_0.91b/Gblocks #{OUT_PREFIX}_1.fa -t=d -b5=a -b4=1000
+  mv #{OUT_PREFIX}_1.fa-gb #{OUT_PREFIX}_1.fa-gb.fasta
     # Convert the FASTA file to a PHYLIP multi-sequence alignment file with ClustalW
-    #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{OUT_PREFIX}_1.fa -output=phylip
+    #{CLUSTALW_DIR}/clustalw2 -convert -infile=#{OUT_PREFIX}_1.fa-gb.fasta -output=phylip
   SH
 end
 
-file "RAxML_bestTree.#{OUT_PREFIX}" => "#{OUT_PREFIX}_1.phy" do |t|
+file "RAxML_bestTree.#{OUT_PREFIX}" => "#{OUT_PREFIX}_1.fa-gb.phy" do |t|
   abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
   outgroup = ENV['OUTGROUP']
   abort "FATAL: Task mugsy requires specifying OUTGROUP" unless outgroup
@@ -214,7 +216,7 @@ file "RAxML_bestTree.#{OUT_PREFIX}" => "#{OUT_PREFIX}_1.phy" do |t|
   LSF.bsub_interactive <<-SH
     # Use RAxML to create a maximum likelihood phylogenetic tree
     # 1) Bootstrapping step that creates a tree to base marginal ancestral state analysis upon
-    #{RAXML_DIR}/raxmlHPC -s #{OUT_PREFIX}_1.phy -#20 -m GTRGAMMA -n #{OUT_PREFIX} -p 12345 \
+    #{RAXML_DIR}/raxmlHPC -s #{OUT_PREFIX}_1.fa-gb.phy -#20 -m GTRGAMMA -n #{OUT_PREFIX} -p 12345 \
         -o #{outgroup.slice(0,10)}
   SH
 end
@@ -227,14 +229,14 @@ file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_
   LSF.job_name "#{OUT_PREFIX}_raxml_mas"
   LSF.bsub_interactive <<-SH
     # 2) Full analysis
-    #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.phy -m GTRGAMMA -p 12345 \
+    #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.fa-gb.phy -m GTRGAMMA -p 12345 \
         -t RAxML_bestTree.#{OUT_PREFIX} -n #{OUT_PREFIX}_mas
   SH
 end
 file "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas" => "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"
 
 file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
-    "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas", "#{OUT_PREFIX}_1.fa"] do |t|
+    "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas", "#{OUT_PREFIX}_1.fa-gb.fasta"] do |t|
   abort "FATAL: Task mugsy requires specifying OUT_PREFIX" unless OUT_PREFIX
   mas_file = "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"
   nlr_tree = "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas"
@@ -252,7 +254,7 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
     module load python/2.7.6
     module load py_packages/2.7
     module load mummer/3.23
-    #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa" \
+    #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa-gb.fasta" \
         > "#{OUT_PREFIX}_snp_tree.newick"
   SH
 end
