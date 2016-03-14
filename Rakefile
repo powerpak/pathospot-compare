@@ -258,6 +258,18 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
 end
 
 
+   system <<-SH
+   #Chuck mugsy.err.log for errors, if found, abort
+   grep "User defined signal 2" "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt"
+   grep "No alignments found containing all genomes." "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt" 
+   grep "Invalid input file." "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt" 
+ SH
+
+
+file "#{OUT}/log/mugsy_error.txt" do
+    abort "FATAL: Task mugsy fail, see mugsy_error.txt" if File.zero?("#{OUT}/log/mugsy_error.txt")
+end 
+
 # ==============
 # = mugsy_plot =
 # ==============
