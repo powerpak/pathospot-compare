@@ -16,6 +16,7 @@ CLUSTALW_DIR = "#{REPO_DIR}/vendor/clustalw"
 RAXML_DIR = "#{REPO_DIR}/vendor/raxml"
 MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
+GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
@@ -57,7 +58,8 @@ end
 ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` before running rake."
 
 desc "Checks environment variables and requirements before running tasks"
-task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, :mauve_install, :grimm] do
+task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, 
+    :mauve_install, :grimm, :gblocks] do
   mkdir_p ENV['TMP'] or abort "FATAL: set TMP to a directory that can store scratch files"
 end
 
@@ -137,6 +139,21 @@ file "#{GRIMM_DIR}/grimm" do
     SH
   end
   Dir.chdir(GRIMM_DIR){ system "make" }
+end
+
+# pulls down precompiled static binaries and JAR files for Mauve 2.3.1, which is used by the mauve task
+# see http://asap.genetics.wisc.edu/software/mauve/
+task :gblocks => [:env, GBLOCKS_DIR, "#{GBLOCKS_DIR}/Gblocks"]
+directory GBLOCKS_DIR
+file "#{GBLOCKS_DIR}/Gblocks" do
+  Dir.chdir(File.dirname(GBLOCKS_DIR)) do
+    system <<-SH
+      curl -L -o gblocks.tar.gz 'http://molevol.cmima.csic.es/castresana/Gblocks/Gblocks_Linux64_0.91b.tar.Z'
+      tar xvzf gblocks.tar.gz
+      mv Gblocks_0.91b/* #{Shellwords.escape(GBLOCKS_DIR)}
+      rm -rf gblocks.tar.gz Gblocks_0.91b
+    SH
+  end
 end
 
 file "pathogendb-comparison.png" => [:graph]
@@ -260,12 +277,12 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
 end
 
 
-   system <<-SH
-   #Chuck mugsy.err.log for errors, if found, abort
-   grep "User defined signal 2" "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt"
-   grep "No alignments found containing all genomes." "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt" 
-   grep "Invalid input file." "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt" 
- SH
+# system <<-SH
+#   #Chuck mugsy.err.log for errors, if found, abort
+#   grep "User defined signal 2" "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt"
+#   grep "No alignments found containing all genomes." "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt"
+#   grep "Invalid input file." "#{OUT}/log/mugsy.err.log" > "#{OUT}/log/mugsy_error.txt"
+# SH
 
 
 file "#{OUT}/log/mugsy_error.txt" do
