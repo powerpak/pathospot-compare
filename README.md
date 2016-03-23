@@ -46,6 +46,14 @@ According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a
 
 [outgroup]: http://en.wikipedia.org/wiki/Outgroup_%28cladistics%29
 
+#### Optional variables
+
+The following are not required by any tasks, but may be helpful:
+
+Variable             | Default | Purpose
+---------------------|---------|-----------------------------------
+`LSF_DISABLE`        | (none)  | Set this variable to anything to globally disable submission of long tasks to LSF. This is probably a good idea if you are running on a Minerva interactive node.
+
 ### Tasks
 
 #### mugsy
