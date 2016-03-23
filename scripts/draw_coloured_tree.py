@@ -4,10 +4,10 @@
 # Version 0.0.1 2016.01.19
 # License: GPLv3
 
-from ete3 import Tree
-import sys
-from ete3 import NodeStyle
-from ete3 import TreeStyle
+from ete3 import *
+#import sys
+#from ete3 import NodeStyle
+#from ete3 import TreeStyle
 
 
 # take a hue, saturation and lightness value and return a RGB hex string
