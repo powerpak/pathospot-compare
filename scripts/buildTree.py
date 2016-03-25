@@ -2,6 +2,7 @@ import sys
 sys.path.append("/sc/orga/projects/InfectiousDisease/tools/anaconda_ete/bin/")
 from ete3 import *
 from draw_coloured_tree import *
+
 bestTree=sys.argv[1]
 nodeLabelledTree=sys.argv[2]
 outfile=sys.argv[3]
