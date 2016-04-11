@@ -205,6 +205,7 @@ file "#{OUT_PREFIX}_1.fa" => "#{OUT_PREFIX}.fa" do |t|
     # Also replace the first period in sequence IDs with a stretch of 10 spaces
     # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
     sed '/^[^>]/s/\-/N/g' #{OUT_PREFIX}.fa | sed '/^>/s/\\./          /' > #{OUT_PREFIX}_1.fa
+    perl  #{REPO_DIR}/scripts/contigLength.pl #{OUT_PREFIX}_1.fa > #{OUT_PREFIX}_Lengths.txt
   SH
 end
 
