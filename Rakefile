@@ -537,9 +537,12 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
     snps_file = snv_file.sub(/\.snv.bed$/, '.snps')
     snp_distance = `wc -l #{Shellwords.escape snps_file}`.to_i
     genomes = genomes_from_task_name(snv_file)
+    source = node_hash[genomes[0][:name]]
+    target = node_hash[genomes[1][:name]]
+    next unless source[:metadata] && target[:metadata]
     json[:links] << {
-      source: node_hash[genomes[0][:name]][:id],
-      target: node_hash[genomes[1][:name]][:id],
+      source: source[:id],
+      target: target[:id],
       value: snp_distance
     }
   end
