@@ -379,6 +379,8 @@ def sv_snv_check(task_name='sv_snv')
   end
 end
 
+SV_FILES = []
+SNV_FILES = []
 SV_SNV_FILES = []
 # Setup, as dependencies for this task, all permutations of IN_FOFN genome names
 directory "#{OUT_PREFIX}.sv_snv"
