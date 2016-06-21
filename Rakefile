@@ -354,16 +354,28 @@ end
 # = sv_snv =
 # ============
 
-desc "Pairwise analysis of structural + single nucleotide changes between genomes"
+desc "Pairwise analysis of structural variants between genomes"
+task :sv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_check, :sv_files]
+
+desc "Pairwise analysis of single nucleotide changes between genomes"
+task :snv => [:check, "#{OUT_PREFIX}.sv_snv", :snv_check, :snv_files]
+
+desc "Pairwise analysis of both structural + single nucleotide changes between genomes"
 task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_files]
-task :sv_snv_check do
-  abort "FATAL: Task sv_snv requires specifying IN_FOFN" unless IN_PATHS
-  abort "FATAL: Task sv_snv requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
-  abort "FATAL: Task sv_snv requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+
+task :sv_check      do sv_snv_check('sv');      end
+task :snv_check     do sv_snv_check('snv');     end
+task :sv_snv_check  do sv_snv_check('sv_snv');  end
   
+def sv_snv_check(task_name='sv_snv')
+  task_name = task_name.to_s
+  abort "FATAL: Task #{task_name} requires specifying IN_FOFN" unless IN_PATHS
+  abort "FATAL: Task #{task_name} requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
+  abort "FATAL: Task #{task_name} requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+
   genome_names = IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   unless genome_names.uniq.size == genome_names.size
-    abort "FATAL: Task sv_snv requires that all IN_FOFN filenames (with the extension removed) are unique"
+    abort "FATAL: Task #{task_name} requires that all IN_FOFN filenames (with the extension removed) are unique"
   end
 end
 
@@ -376,8 +388,11 @@ IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do 
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv.bed"
+  SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snv.bed"
   SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.bed"
 end
+
 
 multitask :sv_snv_files => SV_SNV_FILES
 
@@ -407,7 +422,7 @@ rule '.xmfa.backbone' do |task|
 end
 
 # We create BED files that can visually depict these structural variants
-rule '.bed' => '.xmfa.backbone' do |task|
+rule '.sv.bed' => '.xmfa.backbone' do |task|
   genomes = genomes_from_task_name(task.name)
   backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
   grimm_file = task.name.sub(/\.bed$/, '.grimm')
@@ -419,5 +434,14 @@ rule '.bed' => '.xmfa.backbone' do |task|
         --grimm #{GRIMM_DIR}/grimm \
         --bed #{Shellwords.escape task.name} \
         #{Shellwords.escape grimm_file}
+  SH
+end
+
+# The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
+rule '.bed' => ['.sv.bed', '.snv.bed'] do |task|
+  sv_name = task.name.sub(/\.bed$/, '.sv.bed')
+  snv_name = task.name.sub(/\.bed$/, '.snv.bed')
+  system <<-SH or abort
+    cat #{Shellwords.escape sv_name} #{Shellwords.escape snv_name} > #{Shellwords.escape task.name}
   SH
 end
