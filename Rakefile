@@ -366,6 +366,7 @@ task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_dirs, :s
 task :sv_check      do sv_snv_check('sv');      end
 task :snv_check     do sv_snv_check('snv');     end
 task :sv_snv_check  do sv_snv_check('sv_snv');  end
+task :sv_snv_dirs
   
 def sv_snv_check(task_name='sv_snv')
   task_name = task_name.to_s
