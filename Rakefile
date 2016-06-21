@@ -524,9 +524,11 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
   end
   node_hash.each do |k, v|
     node = {name: k}
-    if v[:metadata]
-      INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
+    unless v[:metadata]
+      puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"
+      next
     end
+    INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
     json[:nodes] << node
     v[:id] = json[:nodes].size - 1
   end
