@@ -3,6 +3,8 @@ require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
 require 'shellwords'
+require 'json'
+require 'csv'
 include Colors
 
 task :default => :check
@@ -20,9 +22,16 @@ GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
+# FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
+# SELECT * FROM tAssemblies
+#   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
+#   LEFT JOIN tStocks ON tStocks.stock_ID = tExtracts.stock_ID
+#   LEFT JOIN tIsolates ON tIsolates.isolate_ID = tStocks.isolate_ID;
+ASSEMBLIES_CSV_FIXME = ENV['ASSEMBLIES_CSV_FIXME'] && File.expand_path(ENV['ASSEMBLIES_CSV_FIXME'])
 
 begin
   IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
+  # TODO: apply options here to generate IN_PATHS from a direct MySQL query to PathogenDB
   IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 rescue Errno::ENOENT
   abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
@@ -350,9 +359,9 @@ file "#{OUT_PREFIX}.xmfa" do |t|
 end
 
 
-# ============
+# ==========
 # = sv_snv =
-# ============
+# ==========
 
 desc "Pairwise analysis of structural variants between genomes"
 task :sv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_check, :sv_snv_dirs, :sv_files]
@@ -394,7 +403,7 @@ end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv.bed"
-  SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snps"
+  SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snv.bed"
   SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv_snv.bed"
 end
 
@@ -477,7 +486,9 @@ end
 
 rule '.snv.bed' => '.snps' do |task|
   system <<-SH
-    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    touch #{Shellwords.escape task.name}
+    #FIXME: replace above with below, and possibly gzip and blow away the .snps files (they are huge)
+    ##{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
   SH
 end
 
@@ -490,4 +501,47 @@ rule '.sv_snv.bed' => ['.sv.bed', '.snv.bed'] do |task|
   system <<-SH or abort
     cat #{Shellwords.escape sv_name} #{Shellwords.escape snv_name} > #{Shellwords.escape task.name}
   SH
+end
+
+
+# ===========
+# = heatmap =
+# ===========
+
+task :heatmap => [:check, SNV_FILES, "#{OUT_PREFIX}.heatmap.json"]
+file "#{OUT_PREFIX}.heatmap.json" =>  do |t|
+  abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
+  abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
+  
+  assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
+  INTERESTING_COLS = ["mran_ID", "collection_date", "collection_unit"]
+  json = {nodes: [], links: []}
+  genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  node_hash = Hash[genome_names.map{|n| [n, {}]}]
+  assemblies.each do |row|
+    next unless node_hash[row["assembly_data_link"]]
+    node_hash[row["assembly_data_link"]][:metadata] = row
+  end
+  node_hash.each do |k, v|
+    node = {name: k}
+    if v[:metadata]
+      INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
+    end
+    json[:nodes] << node
+    v[:id] = json[:nodes].size - 1
+  end
+  
+  SNV_FILES.each do |snv_file|
+    snps_file = snv_file.sub(/\.snv.bed$/, '.snps')
+    snp_distance = `wc -l #{Shellwords.escape snps_file}`.to_i
+    genomes = genomes_from_task_name(snv_file)
+    json[:links] << {
+      source: node_hash[genomes[0][:name]][:id],
+      target: node_hash[genomes[1][:name]][:id],
+      value: snp_distance
+    }
+  end
+  
+  File.new(t.name, 'w') { |f| JSON.dump(json, f) }
 end
