@@ -471,7 +471,7 @@ end
 rule '.snps' => '.filtered-delta' do |task|
   system <<-SH
     module load mummer/3.23
-    show-snps -ITClr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
   SH
 end
 
