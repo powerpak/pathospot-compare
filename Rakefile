@@ -508,8 +508,8 @@ end
 # = heatmap =
 # ===========
 
-task :heatmap => [:check, SNV_FILES, "#{OUT_PREFIX}.heatmap.json"]
-file "#{OUT_PREFIX}.heatmap.json" =>  do |t|
+task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
+file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
