@@ -392,9 +392,9 @@ IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do 
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
-  SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snps"
-  SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snv.bed"
-  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.bed"
+  SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv.bed"
+  SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snps"
+  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv_snv.bed"
 end
 
 multitask :sv_files => SV_FILES
@@ -477,7 +477,7 @@ end
 ###
 # The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
 ###
-rule '.bed' => ['.sv.bed', '.snv.bed'] do |task|
+rule '.sv_snv.bed' => ['.sv.bed', '.snv.bed'] do |task|
   sv_name = task.name.sub(/\.bed$/, '.sv.bed')
   snv_name = task.name.sub(/\.bed$/, '.snv.bed')
   system <<-SH or abort
