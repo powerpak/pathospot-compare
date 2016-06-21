@@ -355,13 +355,13 @@ end
 # ============
 
 desc "Pairwise analysis of structural variants between genomes"
-task :sv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_check, :sv_files]
+task :sv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_check, :sv_snv_dirs, :sv_files]
 
 desc "Pairwise analysis of single nucleotide changes between genomes"
-task :snv => [:check, "#{OUT_PREFIX}.sv_snv", :snv_check, :snv_files]
+task :snv => [:check, "#{OUT_PREFIX}.sv_snv", :snv_check, :sv_snv_dirs, :snv_files]
 
 desc "Pairwise analysis of both structural + single nucleotide changes between genomes"
-task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_files]
+task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_dirs, :sv_snv_files]
 
 task :sv_check      do sv_snv_check('sv');      end
 task :snv_check     do sv_snv_check('snv');     end
@@ -388,7 +388,7 @@ SV_SNV_FILES = []
 directory "#{OUT_PREFIX}.sv_snv"
 IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
   directory "#{OUT_PREFIX}.sv_snv/#{genome_name}"
-  Rake::Task[:sv_snv_check].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
+  Rake::Task[:sv_snv_dirs].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
