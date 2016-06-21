@@ -441,7 +441,7 @@ rule '.xmfa.backbone' do |task|
 end
 
 # We create BED files that can visually depict these structural variants
-rule '.sv.bed' => '.xmfa.backbone' do |task|
+rule %r{\.sv\.bed$} => proc{ |n| n.sub(%r{\.sv\.bed$}, '.xmfa.backbone') } do |task|
   genomes = genomes_from_task_name(task.name)
   backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
   grimm_file = task.name.sub(/\.bed$/, '.grimm')
@@ -484,10 +484,10 @@ rule '.snps' => '.filtered-delta' do |task|
   SH
 end
 
-rule '.snv.bed' => '.snps' do |task|
+rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.snps') } do |task|
   system <<-SH
     touch #{Shellwords.escape task.name}
-    #FIXME: replace above with below, and possibly gzip and blow away the .snps files (they are huge)
+    # FIXME: activate below, and possibly gzip and blow away the .snps files (they are huge)
     ##{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
   SH
 end
@@ -495,11 +495,10 @@ end
 ###
 # The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
 ###
-rule '.sv_snv.bed' => ['.sv.bed', '.snv.bed'] do |task|
-  sv_name = task.name.sub(/\.bed$/, '.sv.bed')
-  snv_name = task.name.sub(/\.bed$/, '.snv.bed')
+rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.sv.bed'), 
+    n.sub(%r{\.sv_snv\.bed$}, '.snv.bed')] } do |task|
   system <<-SH or abort
-    cat #{Shellwords.escape sv_name} #{Shellwords.escape snv_name} > #{Shellwords.escape task.name}
+    cat #{Shellwords.escape task.sources[0]} #{Shellwords.escape task.sources[1]} > #{Shellwords.escape task.name}
   SH
 end
 
