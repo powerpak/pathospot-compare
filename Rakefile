@@ -542,5 +542,5 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
     }
   end
   
-  File.new(t.name, 'w') { |f| JSON.dump(json, f) }
+  File.open(t.name, 'w') { |f| JSON.dump(json, f) }
 end
