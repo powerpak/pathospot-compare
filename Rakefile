@@ -388,12 +388,13 @@ IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do 
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
-  SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv.bed"
+  SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snps"
   SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snv.bed"
   SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.bed"
 end
 
-
+multitask :sv_files => SV_FILES
+multitask :snv_files => SNV_FILES
 multitask :sv_snv_files => SV_SNV_FILES
 
 def genomes_from_task_name(task_name)
@@ -404,6 +405,10 @@ def genomes_from_task_name(task_name)
   end
   genomes
 end
+
+###
+# Creating .sv.bed files from pairwise Mauve alignments
+###
 
 # Mauve backbones show large-scale, structural variants between two genomes
 rule '.xmfa.backbone' do |task|
@@ -437,7 +442,37 @@ rule '.sv.bed' => '.xmfa.backbone' do |task|
   SH
 end
 
+###
+# Creating .snv.bed files from pairwise MUMmer (nucmer) alignments
+###
+
+rule '.delta' do |task|
+  genomes = genomes_from_task_name(task.name)
+  output = task.name.sub(/\.delta$/, '')
+  
+  system <<-SH
+    module load mummer/3.23
+    nucmer -p #{output} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
+  SH
+end
+
+rule '.filtered-delta' => '.delta' do |task|  
+  system <<-SH
+    module load mummer/3.23
+    delta-filter -r -q #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+  SH
+end
+
+rule '.snps' => 'filtered-delta' do |task|
+  system <<-SH
+    module load mummer/3.23
+    show-snps -I -Clr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+  SH
+end
+
+###
 # The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
+###
 rule '.bed' => ['.sv.bed', '.snv.bed'] do |task|
   sv_name = task.name.sub(/\.bed$/, '.sv.bed')
   snv_name = task.name.sub(/\.bed$/, '.snv.bed')
