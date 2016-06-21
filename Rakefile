@@ -370,8 +370,10 @@ task :sv_snv_check  do sv_snv_check('sv_snv');  end
 def sv_snv_check(task_name='sv_snv')
   task_name = task_name.to_s
   abort "FATAL: Task #{task_name} requires specifying IN_FOFN" unless IN_PATHS
-  abort "FATAL: Task #{task_name} requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
-  abort "FATAL: Task #{task_name} requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+  if ['sv', 'sv_snv'].include? task_name
+    abort "FATAL: Task #{task_name} requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
+    abort "FATAL: Task #{task_name} requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+  end
 
   genome_names = IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   unless genome_names.uniq.size == genome_names.size
