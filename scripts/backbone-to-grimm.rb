@@ -26,7 +26,6 @@ COL_20 = ['31,119,180' , '255,127,14' , '44,160,44'  , '214,39,40'  , '148,103,1
 
 class MauveBackboneToGrimm
   
-  # Set up the tran
   def initialize(args)
     @options = {}
 

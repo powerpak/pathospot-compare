@@ -471,7 +471,13 @@ end
 rule '.snps' => '.filtered-delta' do |task|
   system <<-SH
     module load mummer/3.23
-    show-snps -I -Clr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    show-snps -ITClr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+  SH
+end
+
+rule '.snv.bed' => '.snps' do |task|
+  system <<-SH
+    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
   SH
 end
 
