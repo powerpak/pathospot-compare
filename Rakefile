@@ -3,6 +3,8 @@ require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
 require 'shellwords'
+require 'json'
+require 'csv'
 include Colors
 
 task :default => :check
@@ -20,9 +22,16 @@ GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
+# FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
+# SELECT * FROM tAssemblies
+#   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
+#   LEFT JOIN tStocks ON tStocks.stock_ID = tExtracts.stock_ID
+#   LEFT JOIN tIsolates ON tIsolates.isolate_ID = tStocks.isolate_ID;
+ASSEMBLIES_CSV_FIXME = ENV['ASSEMBLIES_CSV_FIXME'] && File.expand_path(ENV['ASSEMBLIES_CSV_FIXME'])
 
 begin
   IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
+  # TODO: apply options here to generate IN_PATHS from a direct MySQL query to PathogenDB
   IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 rescue Errno::ENOENT
   abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
@@ -274,12 +283,9 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
     module load mummer/3.23
     #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa-gb.fasta" \
         > "#{OUT_PREFIX}_snp_tree.newick"
-   sed 's/ROOT\:1.00000//' "#{OUT_PREFIX}_snp_tree.newick" > "#{OUT_PREFIX}_snp_tree.newick1"
+    sed 's/ROOT\:1.00000//' "#{OUT_PREFIX}_snp_tree.newick" > "#{OUT_PREFIX}_snp_tree.newick1"
 
-
-module load python/2.7.6
-module load py_packages/2.7
-  xvfb-run python #{REPO_DIR}/scripts/buildTree.py "RAxML_bestTree.#{OUT_PREFIX}" "#{OUT_PREFIX}_snp_tree.newick1" "#{OUT_PREFIX}_ete_tree.pdf"
+    xvfb-run python #{REPO_DIR}/scripts/buildTree.py "RAxML_bestTree.#{OUT_PREFIX}" "#{OUT_PREFIX}_snp_tree.newick1" "#{OUT_PREFIX}_ete_tree.pdf"
   SH
 end
 
@@ -353,35 +359,56 @@ file "#{OUT_PREFIX}.xmfa" do |t|
 end
 
 
-# ============
+# ==========
 # = sv_snv =
-# ============
+# ==========
 
-desc "Pairwise analysis of structural + single nucleotide changes between genomes"
-task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_files]
-task :sv_snv_check do
-  abort "FATAL: Task sv_snv requires specifying IN_FOFN" unless IN_PATHS
-  abort "FATAL: Task sv_snv requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
-  abort "FATAL: Task sv_snv requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+desc "Pairwise analysis of structural variants between genomes"
+task :sv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_check, :sv_snv_dirs, :sv_files]
+
+desc "Pairwise analysis of single nucleotide changes between genomes"
+task :snv => [:check, "#{OUT_PREFIX}.sv_snv", :snv_check, :sv_snv_dirs, :snv_files]
+
+desc "Pairwise analysis of both structural + single nucleotide changes between genomes"
+task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_dirs, :sv_snv_files]
+
+task :sv_check      do sv_snv_check('sv');      end
+task :snv_check     do sv_snv_check('snv');     end
+task :sv_snv_check  do sv_snv_check('sv_snv');  end
+task :sv_snv_dirs
   
+def sv_snv_check(task_name='sv_snv')
+  task_name = task_name.to_s
+  abort "FATAL: Task #{task_name} requires specifying IN_FOFN" unless IN_PATHS
+  if ['sv', 'sv_snv'].include? task_name
+    abort "FATAL: Task #{task_name} requires specifying SEED_WEIGHT" unless ENV['SEED_WEIGHT']
+    abort "FATAL: Task #{task_name} requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
+  end
+
   genome_names = IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   unless genome_names.uniq.size == genome_names.size
-    abort "FATAL: Task sv_snv requires that all IN_FOFN filenames (with the extension removed) are unique"
+    abort "FATAL: Task #{task_name} requires that all IN_FOFN filenames (with the extension removed) are unique"
   end
 end
 
+SV_FILES = []
+SNV_FILES = []
 SV_SNV_FILES = []
 # Setup, as dependencies for this task, all permutations of IN_FOFN genome names
 directory "#{OUT_PREFIX}.sv_snv"
 IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
   directory "#{OUT_PREFIX}.sv_snv/#{genome_name}"
-  Rake::Task[:sv_snv_check].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
+  Rake::Task[:sv_snv_dirs].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
   genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
-  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.bed"
+  SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv.bed"
+  SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snv.bed"
+  SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv_snv.bed"
 end
 
+multitask :sv_files => SV_FILES
+multitask :snv_files => SNV_FILES
 multitask :sv_snv_files => SV_SNV_FILES
 
 def genomes_from_task_name(task_name)
@@ -392,6 +419,10 @@ def genomes_from_task_name(task_name)
   end
   genomes
 end
+
+###
+# Creating .sv.bed files from pairwise Mauve alignments
+###
 
 # Mauve backbones show large-scale, structural variants between two genomes
 rule '.xmfa.backbone' do |task|
@@ -410,7 +441,7 @@ rule '.xmfa.backbone' do |task|
 end
 
 # We create BED files that can visually depict these structural variants
-rule '.bed' => '.xmfa.backbone' do |task|
+rule %r{\.sv\.bed$} => proc{ |n| n.sub(%r{\.sv\.bed$}, '.xmfa.backbone') } do |task|
   genomes = genomes_from_task_name(task.name)
   backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
   grimm_file = task.name.sub(/\.bed$/, '.grimm')
@@ -423,4 +454,98 @@ rule '.bed' => '.xmfa.backbone' do |task|
         --bed #{Shellwords.escape task.name} \
         #{Shellwords.escape grimm_file}
   SH
+end
+
+###
+# Creating .snv.bed files from pairwise MUMmer (nucmer) alignments
+###
+
+rule '.delta' do |task|
+  genomes = genomes_from_task_name(task.name)
+  output = task.name.sub(/\.delta$/, '')
+  
+  system <<-SH
+    module load mummer/3.23
+    nucmer -p #{output} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
+  SH
+end
+
+rule '.filtered-delta' => '.delta' do |task|  
+  system <<-SH
+    module load mummer/3.23
+    delta-filter -r -q #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+  SH
+end
+
+rule '.snps' => '.filtered-delta' do |task|
+  system <<-SH
+    module load mummer/3.23
+    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+  SH
+end
+
+rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.snps') } do |task|
+  system <<-SH
+    touch #{Shellwords.escape task.name}
+    # FIXME: activate below, and possibly gzip and blow away the .snps files (they are huge)
+    ##{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+  SH
+end
+
+###
+# The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
+###
+rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.sv.bed'), 
+    n.sub(%r{\.sv_snv\.bed$}, '.snv.bed')] } do |task|
+  system <<-SH or abort
+    cat #{Shellwords.escape task.sources[0]} #{Shellwords.escape task.sources[1]} > #{Shellwords.escape task.name}
+  SH
+end
+
+
+# ===========
+# = heatmap =
+# ===========
+
+task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
+file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
+  abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
+  abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
+  
+  assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
+  INTERESTING_COLS = ["mran_ID", "mlst_subtype", "isolate_ID", "procedure_desc", "collection_date", "collection_unit"]
+  json = {nodes: [], links: []}
+  genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  node_hash = Hash[genome_names.map{|n| [n, {}]}]
+  assemblies.each do |row|
+    next unless node_hash[row["assembly_data_link"]]
+    node_hash[row["assembly_data_link"]][:metadata] = row
+  end
+  node_hash.each do |k, v|
+    node = {name: k}
+    unless v[:metadata]
+      puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"
+      next
+    end
+    INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
+    json[:nodes] << node
+    v[:id] = json[:nodes].size - 1
+  end
+  
+  SNV_FILES.each do |snv_file|
+    snps_file = snv_file.sub(/\.snv.bed$/, '.snps')
+    snp_distance = `wc -l #{Shellwords.escape snps_file}`.to_i
+    genomes = genomes_from_task_name(snv_file)
+    source = node_hash[genomes[0][:name]]
+    target = node_hash[genomes[1][:name]]
+    next unless source[:metadata] && target[:metadata]
+    json[:links] << {
+      source: source[:id],
+      target: target[:id],
+      value: snp_distance
+    }
+  end
+  
+  File.open(t.name, 'w') { |f| JSON.dump(json, f) }
 end
