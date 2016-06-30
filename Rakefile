@@ -443,8 +443,8 @@ end
 # We create BED files that can visually depict these structural variants
 rule %r{\.sv\.bed$} => proc{ |n| n.sub(%r{\.sv\.bed$}, '.xmfa.backbone') } do |task|
   genomes = genomes_from_task_name(task.name)
-  backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
-  grimm_file = task.name.sub(/\.bed$/, '.grimm')
+  backbone_file = task.name.sub(/\.sv\.bed$/, '.xmfa.backbone')
+  grimm_file = task.name.sub(/\.sv\.bed$/, '.grimm')
   
   system <<-SH or abort
     #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape backbone_file} \
@@ -477,19 +477,16 @@ rule '.filtered-delta' => '.delta' do |task|
   SH
 end
 
-rule '.snps' => '.filtered-delta' do |task|
+rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.filtered-delta' } do |task|
+  snps_file = task.name.sub(/\.snv\.bed$/, '.snps')
+  
   system <<-SH
     module load mummer/3.23
-    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape snps_file}
+    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} > #{Shellwords.escape task.name}
   SH
-end
-
-rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.snps') } do |task|
-  system <<-SH
-    touch #{Shellwords.escape task.name}
-    # FIXME: activate below, and possibly gzip and blow away the .snps files (they are huge)
-    ##{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
-  SH
+  
+  rm snps_file   # because these are typically huge, and redundant w/ the BED file
 end
 
 ###
