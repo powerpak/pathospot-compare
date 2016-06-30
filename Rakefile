@@ -477,7 +477,7 @@ rule '.filtered-delta' => '.delta' do |task|
   SH
 end
 
-rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.filtered-delta' } do |task|
+rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.filtered-delta') } do |task|
   snps_file = task.name.sub(/\.snv\.bed$/, '.snps')
   
   system <<-SH
