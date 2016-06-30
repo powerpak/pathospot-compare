@@ -492,8 +492,8 @@ end
 ###
 # The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
 ###
-rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.sv.bed'), 
-    n.sub(%r{\.sv_snv\.bed$}, '.snv.bed')] } do |task|
+rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.snv.bed'), 
+    n.sub(%r{\.sv_snv\.bed$}, '.sv.bed')] } do |task|
   system <<-SH or abort
     cat #{Shellwords.escape task.sources[0]} #{Shellwords.escape task.sources[1]} > #{Shellwords.escape task.name}
   SH
