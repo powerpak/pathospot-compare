@@ -541,7 +541,7 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_COUNT_FILES do |task|
   
   SNV_COUNT_FILES.each do |count_file|
     snp_distance = File.read(count_file).strip.to_i
-    genomes = genomes_from_task_name(snv_file)
+    genomes = genomes_from_task_name(count_file)
     source = node_hash[genomes[0][:name]]
     target = node_hash[genomes[1][:name]]
     next unless source[:metadata] && target[:metadata]
