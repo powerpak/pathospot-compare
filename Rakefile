@@ -185,8 +185,7 @@ end
 # =========
 
 desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
-task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
-                "#{OUT_PREFIX}_snp_tree.newick"]
+task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas","#{OUT_PREFIX}_snp_tree.newick"]
 
 file "#{OUT_PREFIX}.fa" do |t|
   # First, performs whole genome alignment with Mugsy, producing a .maf file that we convert to .fa
@@ -259,8 +258,11 @@ file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_
     # 2) Full analysis
     #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.fa-gb.phy -m GTRGAMMA -p 12345 \
         -t RAxML_bestTree.#{OUT_PREFIX} -n #{OUT_PREFIX}_mas
+    #{RAXML_DIR}/raxmlHPC -m GTRGAMMA -p 12345 -b 12345 -# 100 -s #{OUT_PREFIX}_1.fa-gb.phy -n T14
+    #{RAXML_DIR}/raxmlHPC -m GTRCAT -p 12345 -f b -t RAxML_bestTree.#{OUT_PREFIX}  -z RAxML_bootstrap.T14 -n T15
   SH
 end
+
 file "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas" => "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"
 
 file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
