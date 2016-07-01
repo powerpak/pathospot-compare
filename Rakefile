@@ -481,10 +481,14 @@ end
 rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.count)$}, '.filtered-delta') } do |task|
   snps_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snps')
   
-  system <<-SH
+  system <<-SH or abort
     module load mummer/3.23
     show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape snps_file}
-    wc -l #{Shellwords.escape snps_file} > #{Shellwords.escape snps_file}.count
+  SH
+  
+  File.open("#{snps_file}.count", 'w') { |f| f.write(`wc -l #{Shellwords.escape snps_file}`.strip.split(' ')[0]) }
+  
+  system <<-SH
     #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} \
       --limit #{BED_LINES_LIMIT}\
       #{Shellwords.escape task.name}
@@ -509,7 +513,8 @@ end
 # ===========
 
 task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
-file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') } do |task|
+SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
+file "#{OUT_PREFIX}.heatmap.json" => SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
@@ -534,9 +539,8 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES.map{|path| path.sub(%r{\.snv\.bed
     v[:id] = json[:nodes].size - 1
   end
   
-  SNV_FILES.each do |snv_file|
-    snps_file = snv_file.sub(/\.snv.bed$/, '.snps')
-    snp_distance = `wc -l #{Shellwords.escape snps_file}`.to_i
+  SNV_COUNT_FILES.each do |count_file|
+    snp_distance = File.read(count_file).strip.to_i
     genomes = genomes_from_task_name(snv_file)
     source = node_hash[genomes[0][:name]]
     target = node_hash[genomes[1][:name]]
