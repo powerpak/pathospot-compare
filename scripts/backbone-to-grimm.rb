@@ -32,7 +32,7 @@ class MauveBackboneToGrimm
     opt_parser = OptionParser.new do |opts|
       opts.banner = <<-USAGE
 
-Usage: #{$0} -f in.fofn [options] in.xmfa.backbone [out.grimm]
+Usage: #{$0} [options] in.xmfa.backbone [out.grimm]
 
 Transcodes a progressiveMauve .backbone file into an ordered list of numerical genes
 that GRIMM can use as input. Optionally, if provided with the path to GRIMM, this
@@ -53,12 +53,12 @@ assumption.
       opts.separator ""
       opts.separator "Required options:"
       
-      opts.on("-r", "--ref [PATH]",
+      opts.on("-r", "--ref PATH",
               "Path to the filename for seq0 (the reference genome) in the .xmfa.backbone") do |path|
         @options[:ref] = path
       end
       
-      opts.on("-q", "--query [PATH]",
+      opts.on("-q", "--query PATH",
               "Path to the filename for seq0 (the reference genome) in the .xmfa.backbone") do |path|
         @options[:query] = path
       end

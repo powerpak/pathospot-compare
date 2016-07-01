@@ -53,6 +53,7 @@ The following are not required by any tasks, but may be helpful:
 Variable             | Default | Purpose
 ---------------------|---------|-----------------------------------
 `LSF_DISABLE`        | (none)  | Set this variable to anything to globally disable submission of long tasks to LSF. This is probably a good idea if you are running on a Minerva interactive node.
+`BED_LINES_LIMIT`    | 1000    | Don't write data to BED files for the `snv` task that would contain more than this number of lines of data. (Saves disk space.)
 
 ### Tasks
 

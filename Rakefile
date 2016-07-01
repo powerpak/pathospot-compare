@@ -22,6 +22,7 @@ GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
+BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
 # FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
 # SELECT * FROM tAssemblies
 #   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
@@ -477,16 +478,19 @@ rule '.filtered-delta' => '.delta' do |task|
   SH
 end
 
-rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.filtered-delta') } do |task|
-  snps_file = task.name.sub(/\.snv\.bed$/, '.snps')
+rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.count)$}, '.filtered-delta') } do |task|
+  snps_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snps')
   
   system <<-SH
     module load mummer/3.23
     show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape snps_file}
-    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} > #{Shellwords.escape task.name}
+    wc -l #{Shellwords.escape snps_file} > #{Shellwords.escape snps_file}.count
+    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} \
+      --limit #{BED_LINES_LIMIT}\
+      #{Shellwords.escape task.name}
   SH
   
-  rm snps_file   # because these are typically huge, and redundant w/ the BED file
+  verbose(false) { rm snps_file }  # because these are typically huge, and redundant w/ the BED files
 end
 
 ###
@@ -505,7 +509,7 @@ end
 # ===========
 
 task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
-file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
+file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') } do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
@@ -544,5 +548,5 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
     }
   end
   
-  File.open(t.name, 'w') { |f| JSON.dump(json, f) }
+  File.open(task.name, 'w') { |f| JSON.dump(json, f) }
 end
