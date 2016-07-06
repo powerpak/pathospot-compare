@@ -482,6 +482,8 @@ end
 
 rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.count)$}, '.filtered-delta') } do |task|
   snps_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snps')
+  # necessary because the .snps.count can also trigger this task
+  bed_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snv.bed')
   
   system <<-SH or abort
     module load mummer/3.23
@@ -493,7 +495,7 @@ rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.c
   system <<-SH
     #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} \
       --limit #{BED_LINES_LIMIT}\
-      #{Shellwords.escape task.name}
+      #{Shellwords.escape bed_file}
   SH
   
   verbose(false) { rm snps_file }  # because these are typically huge, and redundant w/ the BED files
