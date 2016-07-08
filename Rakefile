@@ -518,7 +518,7 @@ end
 
 task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
 SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
-multitask :snv_count_files => SV_SNV_FILES
+multitask :snv_count_files => SNV_COUNT_FILES
 
 file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
