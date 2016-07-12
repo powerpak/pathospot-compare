@@ -2,6 +2,7 @@ require 'pp'
 require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
+require_relative 'lib/pathogendb_client'
 require 'shellwords'
 require 'json'
 require 'csv'
@@ -23,6 +24,9 @@ GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
+PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
+PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/
+
 # FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
 # SELECT * FROM tAssemblies
 #   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
@@ -523,7 +527,9 @@ multitask :snv_count_files => SNV_COUNT_FILES
 file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
-  abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
+  abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+  
+  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
   
   assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
   INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "isolate_ID", "procedure_desc", "collection_date", "collection_unit"]
