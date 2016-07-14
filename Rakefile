@@ -526,7 +526,7 @@ file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
   
   assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
-  INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "isolate_ID", "procedure_desc", "collection_date", "collection_unit"]
+  INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "isolate_ID", "procedure_desc", "order_date", "collection_unit"]
   json = {nodes: [], links: []}
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
