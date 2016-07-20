@@ -25,14 +25,7 @@ OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
 PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
-PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/
-
-# FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
-# SELECT * FROM tAssemblies
-#   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
-#   LEFT JOIN tStocks ON tStocks.stock_ID = tExtracts.stock_ID
-#   LEFT JOIN tIsolates ON tIsolates.isolate_ID = tStocks.isolate_ID;
-ASSEMBLIES_CSV_FIXME = ENV['ASSEMBLIES_CSV_FIXME'] && File.expand_path(ENV['ASSEMBLIES_CSV_FIXME'])
+PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/ # ignore the example value
 
 begin
   IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
@@ -531,14 +524,15 @@ file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   
   pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
   
-  assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
-  INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "isolate_ID", "procedure_desc", "collection_date", "collection_unit"]
+  assemblies = pdb.assemblies
+  INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
+      :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
   json = {nodes: [], links: []}
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
   assemblies.each do |row|
-    next unless node_hash[row["assembly_data_link"]]
-    node_hash[row["assembly_data_link"]][:metadata] = row
+    next unless node_hash[row[:assembly_data_link]]
+    node_hash[row[:assembly_data_link]][:metadata] = row
   end
   node_hash.each do |k, v|
     node = {name: k}
@@ -546,7 +540,7 @@ file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
       puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"
       next
     end
-    INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
+    INTERESTING_COLS.each { |col| node[col] = v[:metadata][col] }
     json[:nodes] << node
     v[:id] = json[:nodes].size - 1
   end
