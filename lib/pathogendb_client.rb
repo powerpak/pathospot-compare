@@ -20,7 +20,7 @@ class PathogenDBClient
   
   def assembly_paths(base_path, where_sql=nil)
     names = assemblies(where_sql).select_map(:assembly_data_link)
-    names.map{ |n| "#{base_path}/#{n}/#{n}.fasta" }
+    names.map{ |n| File.expand_path("#{n}/#{n}.fasta", base_path) }
   end
   
 end
