@@ -23,18 +23,26 @@ GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
 PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
 PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/ # ignore the example value
+IGB_DIR = ENV['IGB_DIR']
 
-begin
-  IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
-  # TODO: apply options here to generate IN_PATHS from a direct MySQL query to PathogenDB
-  IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
-rescue Errno::ENOENT
-  abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
+if IN_QUERY
+  abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+  abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
+  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
+  IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
+else
+  begin
+    IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
+  rescue Errno::ENOENT
+    abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
+  end
 end
+IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 
 #######
 # Other environment variables that may be set by the user for specific tasks (see README.md)
@@ -525,14 +533,13 @@ file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   
   pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
   
-  assemblies = pdb.assemblies
   INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
       :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
   json = {nodes: [], links: []}
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  assemblies = pdb.assemblies(:assembly_data_link => genome_names)
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
   assemblies.each do |row|
-    next unless node_hash[row[:assembly_data_link]]
     node_hash[row[:assembly_data_link]][:metadata] = row
   end
   node_hash.each do |k, v|
