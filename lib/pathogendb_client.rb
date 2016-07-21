@@ -18,4 +18,9 @@ class PathogenDBClient
     dataset
   end
   
+  def assembly_paths(base_path, where_sql=nil)
+    names = assemblies(where_sql).select_map(:assembly_data_link)
+    names.map{ |n| "#{base_path}/#{n}/#{n}.fasta" }
+  end
+  
 end
