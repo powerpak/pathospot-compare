@@ -21,7 +21,7 @@ class PathogenDBClient
   def assembly_paths(base_path, where_clause=nil)
     names = assemblies(where_clause).select_map(:assembly_data_link)
     paths = names.map{ |n| File.expand_path("#{n}/#{n}.fasta", base_path) }
-    paths.filter do |f|
+    paths.select do |f|
       File.exist?(f) or puts "WARN: Assembly #{f} not in IGB_DIR; skipping"
     end
   end
