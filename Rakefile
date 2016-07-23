@@ -536,6 +536,8 @@ file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
       :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
   json = {nodes: [], links: []}
+  json[:in_query] = IN_QUERY if IN_QUERY
+  json[:out_dir] = "#{OUT_PREFIX}.sv_snv"
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   assemblies = pdb.assemblies(:assembly_data_link => genome_names)
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
