@@ -14,6 +14,8 @@ def bin_cdf(b,d,N):
         sum+=float(nCk(b,i)*(d**i)*(1-d)**(b-i))
     return float(1-sum)
 vcf_file=sys.argv[1]
+mean_snps=int(sys.argv[2])
+genome_size=int(sys.argv[3])
 snp_list=[]
 bin={}
 #Read lines from VCF file and put the positions of the SNPs into an array
@@ -24,13 +26,13 @@ for line in fh.readlines():
 #        print data_list
         snp_list.append(int(data_list[1]))
 #Bin the SNP positions for each 1000 bp block.
-for i in range(0,2940):
+for i in range(0,genome_size):
     bin[i]=0
     for j in range(0, len(snp_list)):
         if(snp_list[j]<=1000*(i+1) and snp_list[j]>=1000*i):
             bin[i]+=1
 #Recombination if this is larger than the binomial statistic
 print 0.05/2940
-for i in range(0,2940):
+for i in range(0,genome_size):
     #binomial statistic for each bin
-    print str(i)+":"+str(bin_cdf(1000,20/1000,bin[i]))
+    print str(i)+":"+str(bin_cdf(1000,mean_snps/1000,bin[i]))
