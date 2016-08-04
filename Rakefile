@@ -22,6 +22,7 @@ GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
+BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
 # FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
 # SELECT * FROM tAssemblies
 #   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
@@ -184,8 +185,7 @@ end
 # =========
 
 desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
-task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
-                "#{OUT_PREFIX}_snp_tree.newick"]
+task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas","#{OUT_PREFIX}_snp_tree.newick"]
 
 file "#{OUT_PREFIX}.fa" do |t|
   # First, performs whole genome alignment with Mugsy, producing a .maf file that we convert to .fa
@@ -258,8 +258,11 @@ file "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas" => "RAxML_bestTree.#{OUT_
     # 2) Full analysis
     #{RAXML_DIR}/raxmlHPC -f A -s #{OUT_PREFIX}_1.fa-gb.phy -m GTRGAMMA -p 12345 \
         -t RAxML_bestTree.#{OUT_PREFIX} -n #{OUT_PREFIX}_mas
+    #{RAXML_DIR}/raxmlHPC -m GTRGAMMA -p 12345 -b 12345 -# 100 -s #{OUT_PREFIX}_1.fa-gb.phy -n T14
+    #{RAXML_DIR}/raxmlHPC -m GTRCAT -p 12345 -f b -t RAxML_bestTree.#{OUT_PREFIX}  -z RAxML_bootstrap.T14 -n T15
   SH
 end
+
 file "RAxML_nodeLabelledRootedTree.#{OUT_PREFIX}_mas" => "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas"
 
 file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas",
@@ -375,7 +378,7 @@ task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_dirs, :s
 task :sv_check      do sv_snv_check('sv');      end
 task :snv_check     do sv_snv_check('snv');     end
 task :sv_snv_check  do sv_snv_check('sv_snv');  end
-task :sv_snv_dirs
+task :sv_snv_dirs => ["#{OUT_PREFIX}.sv_snv"]
   
 def sv_snv_check(task_name='sv_snv')
   task_name = task_name.to_s
@@ -443,8 +446,8 @@ end
 # We create BED files that can visually depict these structural variants
 rule %r{\.sv\.bed$} => proc{ |n| n.sub(%r{\.sv\.bed$}, '.xmfa.backbone') } do |task|
   genomes = genomes_from_task_name(task.name)
-  backbone_file = task.name.sub(/\.bed$/, '.xmfa.backbone')
-  grimm_file = task.name.sub(/\.bed$/, '.grimm')
+  backbone_file = task.name.sub(/\.sv\.bed$/, '.xmfa.backbone')
+  grimm_file = task.name.sub(/\.sv\.bed$/, '.grimm')
   
   system <<-SH or abort
     #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape backbone_file} \
@@ -477,26 +480,32 @@ rule '.filtered-delta' => '.delta' do |task|
   SH
 end
 
-rule '.snps' => '.filtered-delta' do |task|
-  system <<-SH
+rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.count)$}, '.filtered-delta') } do |task|
+  snps_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snps')
+  # necessary because the .snps.count can also trigger this task
+  bed_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snv.bed')
+  
+  system <<-SH or abort
     module load mummer/3.23
-    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape snps_file}
   SH
-end
-
-rule %r{\.snv\.bed$} => proc{ |n| n.sub(%r{\.snv\.bed$}, '.snps') } do |task|
+  
+  File.open("#{snps_file}.count", 'w') { |f| f.write(`wc -l #{Shellwords.escape snps_file}`.strip.split(' ')[0]) }
+  
   system <<-SH
-    touch #{Shellwords.escape task.name}
-    # FIXME: activate below, and possibly gzip and blow away the .snps files (they are huge)
-    ##{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} \
+      --limit #{BED_LINES_LIMIT}\
+      #{Shellwords.escape bed_file}
   SH
+  
+  verbose(false) { rm snps_file }  # because these are typically huge, and redundant w/ the BED files
 end
 
 ###
 # The summary BED track (for :sv_snv) is just a concatenation of both the .sv.bed and .snv.bed tracks
 ###
-rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.sv.bed'), 
-    n.sub(%r{\.sv_snv\.bed$}, '.snv.bed')] } do |task|
+rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.snv.bed'), 
+    n.sub(%r{\.sv_snv\.bed$}, '.sv.bed')] } do |task|
   system <<-SH or abort
     cat #{Shellwords.escape task.sources[0]} #{Shellwords.escape task.sources[1]} > #{Shellwords.escape task.name}
   SH
@@ -508,13 +517,17 @@ end
 # ===========
 
 task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
-file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
+SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
+multitask :snv_count_files => SNV_COUNT_FILES
+
+file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
   
   assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
-  INTERESTING_COLS = ["mran_ID", "mlst_subtype", "isolate_ID", "procedure_desc", "collection_date", "collection_unit"]
+  INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "assembly_ID", "isolate_ID", "procedure_desc", "order_date", 
+      "collection_unit", "contig_count", "contig_N50", "contig_maxlength"]
   json = {nodes: [], links: []}
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
@@ -533,10 +546,9 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
     v[:id] = json[:nodes].size - 1
   end
   
-  SNV_FILES.each do |snv_file|
-    snps_file = snv_file.sub(/\.snv.bed$/, '.snps')
-    snp_distance = `wc -l #{Shellwords.escape snps_file}`.to_i
-    genomes = genomes_from_task_name(snv_file)
+  SNV_COUNT_FILES.each do |count_file|
+    snp_distance = File.read(count_file).strip.to_i
+    genomes = genomes_from_task_name(count_file)
     source = node_hash[genomes[0][:name]]
     target = node_hash[genomes[1][:name]]
     next unless source[:metadata] && target[:metadata]
@@ -547,5 +559,5 @@ file "#{OUT_PREFIX}.heatmap.json" => SNV_FILES do |t|
     }
   end
   
-  File.open(t.name, 'w') { |f| JSON.dump(json, f) }
+  File.open(task.name, 'w') { |f| JSON.dump(json, f) }
 end

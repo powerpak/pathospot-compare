@@ -1,10 +1,17 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    mysql2 (0.4.4)
     rake (10.4.2)
+    sequel (4.30.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  mysql2 (~> 0.4.4)
   rake (>= 0.8.3)
+  sequel (~> 4.30.0)
+
+BUNDLED WITH
+   1.11.2
