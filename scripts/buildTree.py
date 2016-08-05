@@ -66,5 +66,5 @@ ts.arc_start=-180
 ts.arc_span=180
 #ts.force_topology=True
 #ts.mode="c"
-#t1.render("test_tree10.png", w=1830,h=1830,tree_style=ts)
+#t1.render(outfile + ".png", w=1830,h=1830,tree_style=ts)
 draw_tree(t1,"T","F", outfile)
