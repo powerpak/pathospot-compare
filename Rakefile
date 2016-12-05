@@ -19,9 +19,12 @@ RAXML_DIR = "#{REPO_DIR}/vendor/raxml"
 MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
+HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
+
+
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
 # FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
 # SELECT * FROM tAssemblies
@@ -69,7 +72,7 @@ ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` be
 
 desc "Checks environment variables and requirements before running tasks"
 task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, 
-    :mauve_install, :grimm, :gblocks] do
+    :mauve_install, :grimm, :gblocks, :harvest_install] do
   mkdir_p ENV['TMP'] or abort "FATAL: set TMP to a directory that can store scratch files"
 end
 
@@ -180,6 +183,47 @@ task :graph do
 end
 
 
+#Pulls down and compiles Harvest Tools (http://harvest.readthedocs.io/en/latest/index.html) used by the Parsnp task
+task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/harvest"]
+directory HARVEST_DIR 
+file "#{HARVEST_DIR}/harvest" do
+  Dir.chdir(File.dirname(HARVEST_DIR)) do
+    system <<-SH
+      curl -L -o Harvest-Linux64-v1.1.2.tar.gz 'https://github.com/marbl/harvest/releases/download/v1.1.2/Harvest-Linux64-v1.1.2.tar.gz'
+      tar xvzf Harvest-Linux64-v1.1.2.tar.gz
+      mv Harvest-Linux64-v1.1.2/* #{Shellwords.escape(HARVEST_DIR)}
+      rm -rf "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2" "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2.tar.gz"
+    SH
+  end
+end
+
+
+
+# ==========
+# = parsnp =
+# ==========
+desc "runs Parsnp and creates an *xmfa, *ggr, *tree file"
+task :parsnp => [:check, "parsnp.xmfa", "parsnp.tree", "parsnp.ggr"]
+
+#Create necessay directory structure to run parsnp
+dir_name="#{OUT}/genomes"
+mkdir_p dir_name unless File.exist?("#{OUT}/genomes")
+
+#Copy fasta files to genomes folder
+IN_PATHS.each do |filename|
+ cp(filename,"#{OUT}/genomes")
+end
+
+#Run parsnp
+mkdir_p "#{OUT}/log"
+  LSF.set_out_err("log/parsnp.log", "log/parsnp.err.log")
+  LSF.job_name "#{OUT_PREFIX}_parsnp"
+  LSF.bsub_interactive <<-SH
+  "#{HARVEST_DIR}/parsnp" -r "!" -o "#{OUT}" -d "#{OUT}/genomes/" 
+
+SH
+
+#
 # =========
 # = mugsy =
 # =========
