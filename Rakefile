@@ -214,14 +214,17 @@ IN_PATHS.each do |filename|
  cp(filename,"#{OUT}/genomes")
 end
 
+REF = ENV['REF'] || "!"
+GBK = ENV['GBK'] || ""
+
 #Run parsnp
 mkdir_p "#{OUT}/log"
   LSF.set_out_err("log/parsnp.log", "log/parsnp.err.log")
   LSF.job_name "#{OUT_PREFIX}_parsnp"
   LSF.bsub_interactive <<-SH
-  "#{HARVEST_DIR}/parsnp" -r "!" -o "#{OUT}" -d "#{OUT}/genomes/" 
-
+  "#{HARVEST_DIR}/parsnp" -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
 SH
+
 
 #
 # =========
