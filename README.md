@@ -57,8 +57,8 @@ Variable             | Default | Purpose
 `LSF_DISABLE`        | (none)  | Set this variable to anything to globally disable submission of long tasks to LSF. This is probably a good idea if you are running on a Minerva interactive node.
 `BED_LINES_LIMIT`    | 1000    | Don't write data to BED files for the `snv` task that would contain more than this number of lines of data. (Saves disk space.)
 `IGB_DIR`            | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
-`PATHOGENDB_MYSQL_URI` | (none) | 
-`IN_QUERY`           | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were produced and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `"taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'"`
+`PATHOGENDB_MYSQL_URI` | (none) | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
+`IN_QUERY`           | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'`
 
 ### Tasks
 
