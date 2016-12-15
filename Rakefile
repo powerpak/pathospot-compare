@@ -578,11 +578,7 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
   assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
   INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "assembly_ID", "isolate_ID", "procedure_desc", "order_date", 
       "collection_unit", "contig_count", "contig_N50", "contig_maxlength"]
-<<<<<<< HEAD
   json = {generated: DateTime.now.to_s, distance_unit: "nucmer SNVs", nodes: [], links: []}
-=======
-  json = {nodes: [], links: []}
->>>>>>> master
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
   assemblies.each do |row|
