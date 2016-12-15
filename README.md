@@ -37,6 +37,7 @@ Variable             | Required by                           | Default | Purpose
 ---------------------|---------------------------------------|---------|-----------------------------------
 `OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
 `IN_FOFN`            | `mugsy` `mauve` `sv_snv`              | (none)  | A file containing filenames that will be processed as input
+`IN_QUERY`           | `heatmap`                             | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
 `OUT_PREFIX`         | `mugsy` `mugsy_plot` `mauve` `sv_snv` | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
 `SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
@@ -58,7 +59,6 @@ Variable             | Default | Purpose
 `BED_LINES_LIMIT`    | 1000    | Don't write data to BED files for the `snv` task that would contain more than this number of lines of data. (Saves disk space.)
 `IGB_DIR`            | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
 `PATHOGENDB_MYSQL_URI` | (none) | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
-`IN_QUERY`           | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
 
 ### Tasks
 
