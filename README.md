@@ -105,6 +105,10 @@ This task requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `L
 [diff]: http://en.wikipedia.org/wiki/Diff_utility
 [DCJ model]: http://bioinformatics.oxfordjournals.org/content/24/13/i114.abstract
 
+#### heatmap
+
+`rake heatmap` builds off of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathogendb-viz](https://github.com/powerpak/pathogendb-viz).
+
 ### Dependency graph
 
 This Rakefile is able to build a dependency graph of its intermediate files from itself.  Use the `rake graph` task for this; it will be generated at `$OUT/pathogendb-comparison.png`.
