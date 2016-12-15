@@ -58,7 +58,7 @@ Variable             | Default | Purpose
 `BED_LINES_LIMIT`    | 1000    | Don't write data to BED files for the `snv` task that would contain more than this number of lines of data. (Saves disk space.)
 `IGB_DIR`            | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
 `PATHOGENDB_MYSQL_URI` | (none) | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
-`IN_QUERY`           | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'`
+`IN_QUERY`           | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
 
 ### Tasks
 
@@ -116,7 +116,11 @@ This task requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `L
 
 #### heatmap
 
-`rake heatmap` builds off of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathogendb-viz](https://github.com/powerpak/pathogendb-viz).
+`rake heatmap` builds off of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathogendb-viz][].
+
+Note that this task is best run with `IN_QUERY` instead of the simpler `IN_FOFN` approach to selecting input genomes. This is because it expects metadata to be queriable in PathogenDB for each of the genomes. It is possible to still use `INPUT_FOFN`, but if the genomes are named differently from how they are in PathogenDB, the output will be missing information expected by [pathogendb-viz][].
+
+[pathogendb-viz]: (https://github.com/powerpak/pathogendb-viz)
 
 ### Dependency graph
 
