@@ -59,6 +59,10 @@ Variable             | Default | Purpose
 
 ### Tasks
 
+#### parsnp
+
+TODO: `rake parsnp` ... should be documented
+
 #### mugsy
 
 `rake mugsy` requires you to set the `IN_FOFN`, `OUT_PREFIX`, and `OUTGROUP` environment variables. See [Environment variables](#environment-variables) for a description of each.
