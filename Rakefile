@@ -1,9 +1,7 @@
-require 'bundler/setup'
 require 'pp'
 require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
-require_relative 'lib/pathogendb_client'
 require 'shellwords'
 require 'json'
 require 'csv'
@@ -21,28 +19,27 @@ RAXML_DIR = "#{REPO_DIR}/vendor/raxml"
 MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
+HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
-IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
-BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
-PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
-PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/ # ignore the example value
-IGB_DIR = ENV['IGB_DIR']
 
-if IN_QUERY
-  abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
-  abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
-  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
-  IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
-else
-  begin
-    IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
-  rescue Errno::ENOENT
-    abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
-  end
+
+BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
+# FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
+# SELECT * FROM tAssemblies
+#   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
+#   LEFT JOIN tStocks ON tStocks.stock_ID = tExtracts.stock_ID
+#   LEFT JOIN tIsolates ON tIsolates.isolate_ID = tStocks.isolate_ID;
+ASSEMBLIES_CSV_FIXME = ENV['ASSEMBLIES_CSV_FIXME'] && File.expand_path(ENV['ASSEMBLIES_CSV_FIXME'])
+
+begin
+  IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
+  # TODO: apply options here to generate IN_PATHS from a direct MySQL query to PathogenDB
+  IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
+rescue Errno::ENOENT
+  abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
 end
-IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 
 #######
 # Other environment variables that may be set by the user for specific tasks (see README.md)
@@ -75,7 +72,7 @@ ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` be
 
 desc "Checks environment variables and requirements before running tasks"
 task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, 
-    :mauve_install, :grimm, :gblocks] do
+    :mauve_install, :grimm, :gblocks, :harvest_install] do
   mkdir_p ENV['TMP'] or abort "FATAL: set TMP to a directory that can store scratch files"
 end
 
@@ -186,6 +183,49 @@ task :graph do
 end
 
 
+#Pulls down and compiles Harvest Tools (http://harvest.readthedocs.io/en/latest/index.html) used by the Parsnp task
+task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/harvest"]
+directory HARVEST_DIR 
+file "#{HARVEST_DIR}/harvest" do
+  Dir.chdir(File.dirname(HARVEST_DIR)) do
+    system <<-SH
+      curl -L -o Harvest-Linux64-v1.1.2.tar.gz 'https://github.com/marbl/harvest/releases/download/v1.1.2/Harvest-Linux64-v1.1.2.tar.gz'
+      tar xvzf Harvest-Linux64-v1.1.2.tar.gz
+      mv Harvest-Linux64-v1.1.2/* #{Shellwords.escape(HARVEST_DIR)}
+      rm -rf "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2" "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2.tar.gz"
+    SH
+  end
+end
+
+
+
+# ==========
+# = parsnp =
+# ==========
+desc "runs Parsnp and creates an *xmfa, *ggr, *tree file"
+task :parsnp => [:check, "parsnp.xmfa", "parsnp.tree", "parsnp.ggr"]
+
+#Create necessay directory structure to run parsnp
+dir_name = "#{OUT}/genomes"
+mkdir_p dir_name unless File.exist?("#{OUT}/genomes")
+
+#Copy fasta files to genomes folder
+IN_PATHS.each do |filename|
+ cp(filename,"#{OUT}/genomes")
+end
+
+REF = ENV['REF'] || "!"
+GBK = ENV['GBK'] || ""
+
+#Run parsnp
+mkdir_p "#{OUT}/log"
+  LSF.set_out_err("log/parsnp.log", "log/parsnp.err.log")
+  LSF.job_name "#{OUT_PREFIX}_parsnp"
+  LSF.bsub_interactive <<-SH
+  "#{HARVEST_DIR}/parsnp" -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
+SH
+
+
 # =========
 # = mugsy =
 # =========
@@ -221,6 +261,7 @@ file "#{OUT_PREFIX}_1.fa" => "#{OUT_PREFIX}.fa" do |t|
     # This squelches the subsequent contig IDs or accession numbers when converting to PHYLIP
     sed '/^[^>]/s/\-/N/g' #{OUT_PREFIX}.fa | sed '/^>/s/\\./          /' > #{OUT_PREFIX}_1.fa
     perl  #{REPO_DIR}/scripts/coreGenomeSize.pl -f #{OUT_PREFIX}.maf -n `sort '#{IN_FOFN}' | uniq | wc -l` > #{OUT_PREFIX}_Lengths.txt
+    sh #{REPO_DIR}/scripts/make_html.sh #{OUT_PREFIX}
   SH
 end
 
@@ -293,8 +334,9 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
     #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa-gb.fasta" \
         > "#{OUT_PREFIX}_snp_tree.newick"
     sed 's/ROOT\:1.00000//' "#{OUT_PREFIX}_snp_tree.newick" > "#{OUT_PREFIX}_snp_tree.newick1"
-
     xvfb-run python #{REPO_DIR}/scripts/buildTree.py "RAxML_bestTree.#{OUT_PREFIX}" "#{OUT_PREFIX}_snp_tree.newick1" "#{OUT_PREFIX}_ete_tree.pdf"
+    xvfb-run python #{REPO_DIR}/scripts/buildTree.py "RAxML_bestTree.#{OUT_PREFIX}" "#{OUT_PREFIX}_snp_tree.newick1" "#{OUT_PREFIX}_ete_tree.png"
+
   SH
 end
 
@@ -522,27 +564,25 @@ end
 # = heatmap =
 # ===========
 
-task :heatmap => [:check, "#{OUT_PREFIX}.heatmap.json"]
+HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap.json"
+task :heatmap => [:check, HEATMAP_JSON_FILE]
 SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
 multitask :snv_count_files => SNV_COUNT_FILES
 
-file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
+file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
-  abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+  abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
   
-  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
-  
-  INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
-      :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
-  json = {nodes: [], links: []}
-  json[:in_query] = IN_QUERY if IN_QUERY
-  json[:out_dir] = "#{OUT_PREFIX}.sv_snv"
+  assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
+  INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "assembly_ID", "isolate_ID", "procedure_desc", "order_date", 
+      "collection_unit", "contig_count", "contig_N50", "contig_maxlength"]
+  json = {generated: DateTime.now.to_s, distance_unit: "nucmer SNVs", nodes: [], links: []}
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
-  assemblies = pdb.assemblies(:assembly_data_link => genome_names)
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
   assemblies.each do |row|
-    node_hash[row[:assembly_data_link]][:metadata] = row
+    next unless node_hash[row["assembly_data_link"]]
+    node_hash[row["assembly_data_link"]][:metadata] = row
   end
   node_hash.each do |k, v|
     node = {name: k}
@@ -550,7 +590,7 @@ file "#{OUT_PREFIX}.heatmap.json" => [:sv_snv_dirs, :snv_count_files] do |task|
       puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"
       next
     end
-    INTERESTING_COLS.each { |col| node[col] = v[:metadata][col] }
+    INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
     json[:nodes] << node
     v[:id] = json[:nodes].size - 1
   end
