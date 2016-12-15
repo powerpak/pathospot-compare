@@ -2,6 +2,7 @@ require 'pp'
 require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
+require_relative 'lib/pathogendb_client'
 require 'shellwords'
 require 'json'
 require 'csv'
@@ -22,24 +23,26 @@ GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
-
-
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
-# FIXME: replace this with a direct MySQL query to PathogenDB. For now this was generated with
-# SELECT * FROM tAssemblies
-#   LEFT JOIN tExtracts ON tExtracts.extract_ID = tAssemblies.extract_ID
-#   LEFT JOIN tStocks ON tStocks.stock_ID = tExtracts.stock_ID
-#   LEFT JOIN tIsolates ON tIsolates.isolate_ID = tStocks.isolate_ID;
-ASSEMBLIES_CSV_FIXME = ENV['ASSEMBLIES_CSV_FIXME'] && File.expand_path(ENV['ASSEMBLIES_CSV_FIXME'])
+PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
+PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/ # ignore the example value
+IGB_DIR = ENV['IGB_DIR']
 
-begin
-  IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
-  # TODO: apply options here to generate IN_PATHS from a direct MySQL query to PathogenDB
-  IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
-rescue Errno::ENOENT
-  abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
+if IN_QUERY
+  abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+  abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
+  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
+  IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
+else
+  begin
+    IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
+  rescue Errno::ENOENT
+    abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
+  end
 end
+IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 
 #######
 # Other environment variables that may be set by the user for specific tasks (see README.md)
@@ -575,15 +578,18 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying ASSEMBLIES_CSV_FIXME" unless ASSEMBLIES_CSV_FIXME 
   
-  assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
-  INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "assembly_ID", "isolate_ID", "procedure_desc", "order_date", 
-      "collection_unit", "contig_count", "contig_N50", "contig_maxlength"]
+  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
+  
+  INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
+        :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
   json = {generated: DateTime.now.to_s, distance_unit: "nucmer SNVs", nodes: [], links: []}
+  json[:in_query] = IN_QUERY if IN_QUERY
+  json[:out_dir] = "#{OUT_PREFIX}.sv_snv"
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  assemblies = pdb.assemblies(:assembly_data_link => genome_names)
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
   assemblies.each do |row|
-    next unless node_hash[row["assembly_data_link"]]
-    node_hash[row["assembly_data_link"]][:metadata] = row
+    node_hash[row[:assembly_data_link]][:metadata] = row
   end
   node_hash.each do |k, v|
     node = {name: k}
@@ -591,11 +597,11 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
       puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"
       next
     end
-    INTERESTING_COLS.each { |col| node[col.to_sym] = v[:metadata][col] }
+    INTERESTING_COLS.each { |col| node[col] = v[:metadata][col] }
     json[:nodes] << node
     v[:id] = json[:nodes].size - 1
   end
-  
+ 
   SNV_COUNT_FILES.each do |count_file|
     snp_distance = File.read(count_file).strip.to_i
     genomes = genomes_from_task_name(count_file)
@@ -608,6 +614,6 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
       value: snp_distance
     }
   end
-  
+ 
   File.open(task.name, 'w') { |f| JSON.dump(json, f) }
 end
