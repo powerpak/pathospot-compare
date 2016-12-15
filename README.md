@@ -41,6 +41,8 @@ Variable             | Required by                           | Default | Purpose
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
 `SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
+`REF`                | `parsnp`                              | (random)| Specify a reference genome for parsnp
+`GBK`                | `parsnp`                              | (none)  | Specify a genbank file for parsnp
 
 According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
 

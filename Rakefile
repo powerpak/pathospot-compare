@@ -205,26 +205,27 @@ end
 desc "runs Parsnp and creates an *xmfa, *ggr, *tree file"
 task :parsnp => [:check, "parsnp.xmfa", "parsnp.tree", "parsnp.ggr"]
 
-#Create necessay directory structure to run parsnp
-dir_name = "#{OUT}/genomes"
-mkdir_p dir_name unless File.exist?("#{OUT}/genomes")
+file "parsnp.tree" do |t|
+  # Create necessay directory structure to run parsnp
+  dir_name = "#{OUT}/genomes"
+  mkdir_p dir_name unless File.exist?("#{OUT}/genomes")
 
-#Copy fasta files to genomes folder
-IN_PATHS.each do |filename|
- cp(filename,"#{OUT}/genomes")
-end
+  # Copy fasta files to genomes folder
+  IN_PATHS.each do |filename|
+   cp(filename,"#{OUT}/genomes")
+  end
 
-REF = ENV['REF'] || "!"
-GBK = ENV['GBK'] || ""
+  REF = ENV['REF'] || "!"
+  GBK = ENV['GBK'] || ""
 
-#Run parsnp
-mkdir_p "#{OUT}/log"
+  # Run parsnp
+  mkdir_p "#{OUT}/log"
   LSF.set_out_err("log/parsnp.log", "log/parsnp.err.log")
   LSF.job_name "#{OUT_PREFIX}_parsnp"
   LSF.bsub_interactive <<-SH
-  "#{HARVEST_DIR}/parsnp" -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
-SH
-
+    "#{HARVEST_DIR}/parsnp" -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
+  SH
+end
 
 # =========
 # = mugsy =
@@ -577,7 +578,11 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
   assemblies = CSV.read(ASSEMBLIES_CSV_FIXME, headers: true)
   INTERESTING_COLS = ["eRAP_ID", "mlst_subtype", "assembly_ID", "isolate_ID", "procedure_desc", "order_date", 
       "collection_unit", "contig_count", "contig_N50", "contig_maxlength"]
+<<<<<<< HEAD
   json = {generated: DateTime.now.to_s, distance_unit: "nucmer SNVs", nodes: [], links: []}
+=======
+  json = {nodes: [], links: []}
+>>>>>>> master
   genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
   node_hash = Hash[genome_names.map{|n| [n, {}]}]
   assemblies.each do |row|
