@@ -566,7 +566,7 @@ end
 # ===========
 
 HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap.json"
-task :heatmap => [:check, HEATMAP_JSON_FILE]
+task :heatmap => [:check, HEATMAP_SNV_JSON_FILE]
 SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
 multitask :snv_count_files => SNV_COUNT_FILES
 
