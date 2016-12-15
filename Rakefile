@@ -184,9 +184,9 @@ end
 
 
 #Pulls down and compiles Harvest Tools (http://harvest.readthedocs.io/en/latest/index.html) used by the Parsnp task
-task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/harvest"]
+task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/parsnp"]
 directory HARVEST_DIR 
-file "#{HARVEST_DIR}/harvest" do
+file "#{HARVEST_DIR}/parsnp" do
   Dir.chdir(File.dirname(HARVEST_DIR)) do
     system <<-SH
       curl -L -o Harvest-Linux64-v1.1.2.tar.gz 'https://github.com/marbl/harvest/releases/download/v1.1.2/Harvest-Linux64-v1.1.2.tar.gz'
