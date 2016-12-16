@@ -44,6 +44,8 @@ Variable             | Required by                           | Default | Purpose
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
 `REF`                | `parsnp`                              | (random)| Specify a reference genome for parsnp
 `GBK`                | `parsnp`                              | (none)  | Specify a genbank file for parsnp
+`IGB_DIR`            | `heatmap`                             | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
+`PATHOGENDB_MYSQL_URI` | `heatmap`                           | (none)  | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
 
 According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
 
@@ -57,8 +59,6 @@ Variable             | Default | Purpose
 ---------------------|---------|-----------------------------------
 `LSF_DISABLE`        | (none)  | Set this variable to anything to globally disable submission of long tasks to LSF. This is probably a good idea if you are running on a Minerva interactive node.
 `BED_LINES_LIMIT`    | 1000    | Don't write data to BED files for the `snv` task that would contain more than this number of lines of data. (Saves disk space.)
-`IGB_DIR`            | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
-`PATHOGENDB_MYSQL_URI` | (none) | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
 
 ### Tasks
 
