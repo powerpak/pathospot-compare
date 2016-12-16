@@ -1,3 +1,5 @@
+require 'rubygems'
+require 'bundler/setup'
 require 'pp'
 require 'net/http'
 require_relative 'lib/colors'
