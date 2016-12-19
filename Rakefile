@@ -571,6 +571,7 @@ end
 # ===========
 
 HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap.json"
+desc "Generate assembly distances for heatmap in pathogendb-viz"
 task :heatmap => [:check, HEATMAP_SNV_JSON_FILE]
 SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
 multitask :snv_count_files => SNV_COUNT_FILES
@@ -626,7 +627,8 @@ end
 # =======
 
 HEATMAP_EPI_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.epi.heatmap.json"
-task epi => [:check, HEATMAP_EPI_JSON_FILE]
+desc "Download isolate spatiotemporal data for pathogendb-viz"
+task :epi => [:check, HEATMAP_EPI_JSON_FILE]
 
 file HEATMAP_EPI_JSON_FILE do |task|
   abort "FATAL: Task epi requires specifying IN_QUERY" unless IN_QUERY
@@ -637,7 +639,7 @@ file HEATMAP_EPI_JSON_FILE do |task|
   
   json = {generated: DateTime.now.to_s, in_query: IN_QUERY, isolates:[]}
   pdb.isolates(IN_QUERY).each do |row|
-    json[:isolates] = [row[:order_date], row[:collection_unit]]
+    json[:isolates] << [row[:order_date], row[:collection_unit]]
   end
  
   File.open(task.name, 'w') { |f| JSON.dump(json, f) }
