@@ -26,4 +26,11 @@ class PathogenDBClient
     end
   end
   
+  def isolates(where_clause=nil)
+    dataset = @db[:tIsolates]
+        .left_join(:tOrganisms, :organism_ID => :organism_ID)
+    dataset = dataset.where(where_clause) if where_clause
+    dataset
+  end
+  
 end

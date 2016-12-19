@@ -619,3 +619,26 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
  
   File.open(task.name, 'w') { |f| JSON.dump(json, f) }
 end
+
+
+# =======
+# = epi =
+# =======
+
+HEATMAP_EPI_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.epi.heatmap.json"
+task epi => [:check, HEATMAP_EPI_JSON_FILE]
+
+file HEATMAP_EPI_JSON_FILE do |task|
+  abort "FATAL: Task epi requires specifying IN_QUERY" unless IN_QUERY
+  abort "FATAL: Task epi requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task epi requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
+  
+  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
+  
+  json = {generated: DateTime.now.to_s, in_query: IN_QUERY, isolates:[]}
+  pdb.isolates(IN_QUERY).each do |row|
+    json[:isolates] = [row[:order_date], row[:collection_unit]]
+  end
+ 
+  File.open(task.name, 'w') { |f| JSON.dump(json, f) }
+end
