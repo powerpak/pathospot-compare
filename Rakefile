@@ -550,7 +550,7 @@ rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| g[:filt_path] } } 
   
   system <<-SH
     module load mummer/3.23
-    nucmer -p #{output} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
+    nucmer -p #{output} #{Shellwords.escape genomes[0][:filt_path]} #{Shellwords.escape genomes[1][:filt_path]}
   SH
 end
 
