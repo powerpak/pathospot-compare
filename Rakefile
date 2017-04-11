@@ -5,6 +5,7 @@ require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
 require_relative 'lib/pathogendb_client'
+require_relative 'lib/filter_fasta'
 require 'shellwords'
 require 'json'
 require 'csv'
@@ -43,6 +44,12 @@ else
   rescue Errno::ENOENT
     abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
   end
+end
+if IN_PATHS && IN_PATHS.map{ |p| File.basename p }.uniq.size < IN_PATHS.size
+  abort "FATAL: Some of the IN_PATHS do not have unique filenames. Every FASTA file needs a unique name."
+end
+if IN_PATHS && IN_PATHS.find{ |p| !p.match(%r{\.fa(sta)?$}) }
+  abort "FATAL: All paths in IN_PATHS should end in .fa or .fasta"
 end
 IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 
@@ -207,8 +214,9 @@ end
 # ==========
 # = parsnp =
 # ==========
+
 desc "runs Parsnp and creates an *xmfa, *ggr, *tree file"
-task :parsnp => [:check, "parsnp.xmfa", "parsnp.tree", "parsnp.ggr"]
+task :parsnp => [:check, "parsnp.xmfa", "parsnp.tree", "parsnp.ggr", "snv_distance.tsv"]
 
 file "parsnp.tree" do |t|
   # Create necessay directory structure to run parsnp
@@ -229,8 +237,11 @@ file "parsnp.tree" do |t|
   LSF.job_name "#{OUT_PREFIX}_parsnp"
   LSF.bsub_interactive <<-SH
     "#{HARVEST_DIR}/parsnp" -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
+    "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -V parsnp.vcf
+    python #{REPO_DIR}/scripts/parsnp2table.py parsnp.vcf snv_distance.tsv
   SH
 end
+
 
 # =========
 # = mugsy =
@@ -247,7 +258,7 @@ file "#{OUT_PREFIX}.fa" do |t|
   
   mkdir_p "#{OUT}/log"
   
-  paths = IN_PATHS.map{|f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{ |f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mugsy.log", "log/mugsy.err.log")
   LSF.job_name "#{OUT_PREFIX}.fa"
@@ -405,7 +416,7 @@ file "#{OUT_PREFIX}.xmfa" do |t|
   tree_directory = OUT
   mkdir_p "#{OUT}/log"
   
-  paths = IN_PATHS.map{|f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{ |f| Shellwords.escape(f.strip) }.join(' ')
   
   LSF.set_out_err("log/mauve.log", "log/mauve.err.log")
   LSF.job_name "#{OUT_PREFIX}.xmfa"
@@ -421,18 +432,18 @@ end
 # ==========
 
 desc "Pairwise analysis of structural variants between genomes"
-task :sv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_check, :sv_snv_dirs, :sv_files]
+task :sv => [:check, :sv_check, :sv_snv_dirs, :sv_files]
 
 desc "Pairwise analysis of single nucleotide changes between genomes"
-task :snv => [:check, "#{OUT_PREFIX}.sv_snv", :snv_check, :sv_snv_dirs, :snv_files]
+task :snv => [:check, :snv_check, :sv_snv_dirs, :snv_files]
 
 desc "Pairwise analysis of both structural + single nucleotide changes between genomes"
-task :sv_snv => [:check, "#{OUT_PREFIX}.sv_snv", :sv_snv_check, :sv_snv_dirs, :sv_snv_files]
+task :sv_snv => [:check, :sv_snv_check, :sv_snv_dirs, :sv_snv_files]
 
 task :sv_check      do sv_snv_check('sv');      end
 task :snv_check     do sv_snv_check('snv');     end
 task :sv_snv_check  do sv_snv_check('sv_snv');  end
-task :sv_snv_dirs => ["#{OUT_PREFIX}.sv_snv"]
+task :sv_snv_dirs => ["#{OUT_PREFIX}.sv_snv", "#{OUT_PREFIX}.contig_filter"]
   
 def sv_snv_check(task_name='sv_snv')
   task_name = task_name.to_s
@@ -442,7 +453,7 @@ def sv_snv_check(task_name='sv_snv')
     abort "FATAL: Task #{task_name} requires specifying LCB_WEIGHT" unless ENV['LCB_WEIGHT']
   end
 
-  genome_names = IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  genome_names = IN_PATHS.map{ |path| File.basename(path).sub(/\.\w+$/, '') }
   unless genome_names.uniq.size == genome_names.size
     abort "FATAL: Task #{task_name} requires that all IN_FOFN filenames (with the extension removed) are unique"
   end
@@ -453,12 +464,14 @@ SNV_FILES = []
 SV_SNV_FILES = []
 # Setup, as dependencies for this task, all permutations of IN_FOFN genome names
 directory "#{OUT_PREFIX}.sv_snv"
-IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
+directory "#{OUT_PREFIX}.contig_filter"
+
+IN_PATHS && IN_PATHS.map{ |path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
   directory "#{OUT_PREFIX}.sv_snv/#{genome_name}"
   Rake::Task[:sv_snv_dirs].enhance ["#{OUT_PREFIX}.sv_snv/#{genome_name}"]
 end
 IN_PATHS_PAIRS && IN_PATHS_PAIRS.each do |pair|
-  genome_names = pair.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  genome_names = pair.map{ |path| File.basename(path).sub(/\.\w+$/, '') }
   SV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv.bed"
   SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.snv.bed"
   SV_SNV_FILES << "#{OUT_PREFIX}.sv_snv/#{genome_names[0]}/#{genome_names.join '_'}.sv_snv.bed"
@@ -472,9 +485,16 @@ def genomes_from_task_name(task_name)
   genomes = [{:name => task_name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}]
   genomes[1] = {:name => task_name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
   genomes.each do |g| 
-    g[:path] = IN_PATHS.find{|path| path =~ /#{g[:name]}\.\w+$/ }
+    g[:path] = IN_PATHS.find{ |path| path =~ /#{g[:name]}\.\w+$/ }
+    filename = File.basename(g[:path])
+    g[:filt_path] = "#{OUT_PREFIX}.contig_filter/#{filename.sub(%r{\.(fa|fasta)$}, '.filt.\\1')}"
   end
   genomes
+end
+
+def filtered_to_unfiltered(filtered_path)
+  name = filtered_path.sub("#{OUT_PREFIX}.contig_filter/", '').sub(%r{\.filt\.(fa|fasta)$}, '.\\1')
+  IN_PATHS.find{ |path| path =~ /#{name}$/ }
 end
 
 ###
@@ -513,11 +533,18 @@ rule %r{\.sv\.bed$} => proc{ |n| n.sub(%r{\.sv\.bed$}, '.xmfa.backbone') } do |t
   SH
 end
 
+
 ###
 # Creating .snv.bed files from pairwise MUMmer (nucmer) alignments
 ###
 
-rule '.delta' do |task|
+# This rule creates a filtered FASTA file from the original that drops any contigs flagged as "merged" or "garbage"
+rule %r{\.filt\.(fa|fasta)$} => proc{ |n| filtered_to_unfiltered(n) } do |task|
+  cp task.source, task.name
+  filter_fasta(task.source, task.name, /_[mg]_/, :invert => true)
+end
+
+rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| g[:filt_path] } } do |task|
   genomes = genomes_from_task_name(task.name)
   output = task.name.sub(/\.delta$/, '')
   
@@ -573,7 +600,7 @@ end
 HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap.json"
 desc "Generate assembly distances for heatmap in pathogendb-viz"
 task :heatmap => [:check, HEATMAP_SNV_JSON_FILE]
-SNV_COUNT_FILES = SNV_FILES.map{|path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
+SNV_COUNT_FILES = SNV_FILES.map{ |path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
 multitask :snv_count_files => SNV_COUNT_FILES
 
 file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
@@ -588,9 +615,9 @@ file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
   json = {generated: DateTime.now.to_s, distance_unit: "nucmer SNVs", nodes: [], links: []}
   json[:in_query] = IN_QUERY if IN_QUERY
   json[:out_dir] = "#{OUT_PREFIX}.sv_snv"
-  genome_names = IN_PATHS && IN_PATHS.map{|path| File.basename(path).sub(/\.\w+$/, '') }
+  genome_names = IN_PATHS && IN_PATHS.map{ |path| File.basename(path).sub(/\.\w+$/, '') }
   assemblies = pdb.assemblies(:assembly_data_link => genome_names)
-  node_hash = Hash[genome_names.map{|n| [n, {}]}]
+  node_hash = Hash[genome_names.map{ |n| [n, {}] }]
   assemblies.each do |row|
     node_hash[row[:assembly_data_link]][:metadata] = row
   end
