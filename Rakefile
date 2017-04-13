@@ -216,9 +216,9 @@ end
 # ==========
 
 desc "runs Parsnp and creates an *xmfa, *ggr, *tree file"
-task :parsnp => [:check, "parsnp.xmfa", "parsnp.tree", "parsnp.ggr", "snv_distance.tsv"]
+task :parsnp => [:check, "snv_distance.tsv"]
 
-file "parsnp.tree" do |t|
+file "snv_distance.tsv" do |t|
   # Create necessay directory structure to run parsnp
   dir_name = "#{OUT}/genomes"
   mkdir_p dir_name unless File.exist?("#{OUT}/genomes")
