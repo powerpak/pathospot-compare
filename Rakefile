@@ -233,10 +233,8 @@ file "snv_distance.tsv" do |t|
 
   # Run parsnp
   mkdir_p "#{OUT}/log"
-  LSF.set_out_err("log/parsnp.log", "log/parsnp.err.log")
-  LSF.job_name "#{OUT_PREFIX}_parsnp"
-  LSF.bsub_interactive <<-SH
-    "#{HARVEST_DIR}/parsnp" -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
+  system <<-SH
+    "#{HARVEST_DIR}/parsnp" -c -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
     "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -V parsnp.vcf
     python #{REPO_DIR}/scripts/parsnp2table.py parsnp.vcf snv_distance.tsv
   SH
