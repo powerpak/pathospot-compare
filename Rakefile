@@ -236,6 +236,8 @@ file "snv_distance.tsv" do |t|
   system <<-SH
     "#{HARVEST_DIR}/parsnp" -c -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
     "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -V parsnp.vcf
+    "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -N parsnp.nwk
+    "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -X parsnp.xmfa
     python #{REPO_DIR}/scripts/parsnp2table.py parsnp.vcf snv_distance.tsv
   SH
 end
