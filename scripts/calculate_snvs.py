@@ -24,15 +24,15 @@ def get_fasta_list(fasta_name):
                 out_list.append((header, seq))
     return out_list
 
-def group_snvs(input_folder, mash, working_dir):
+def group_snvs(input_folder, mash, working_dir, max_cluster_size):
     fasta_list = []
-    out_groups = []
     G = nx.Graph()
     for file in os.listdir(input_folder):
         if file.endswith('.fa') or file.endswith('.fna') or file.endswith('.fasta'):
             fasta_list.append(input_folder + '/' + file)
     subprocess.Popen(mash + ' sketch -o ' + working_dir + '/reference.msh ' + ' '.join(fasta_list), shell=True).wait()
-    cutoff = 0.005
+    edge_list = []
+    cutoff = 0.75
     for file in fasta_list:
         process = subprocess.Popen(mash + ' dist ' + working_dir + '/reference.msh ' + file, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in process.stdout:
@@ -40,13 +40,21 @@ def group_snvs(input_folder, mash, working_dir):
             if float(dist) <= cutoff:
                 G.add_node(fasta_a)
                 G.add_node(fasta_b)
-                G.add_edge(fasta_a, fasta_b)
-    subgraphs = nx.connected_component_subgraphs(G)
-    for sg in subgraphs:
-        group = []
-        for node in sg.nodes():
-            group.append(node)
-        out_groups.append(group)
+                edge_list.append((float(dist), fasta_a, fasta_b))
+    edge_list.sort()
+    for i in edge_list:
+        print i
+        G.add_edge(i[1], i[2])
+        new_out_groups = []
+        subgraphs = nx.connected_component_subgraphs(G)
+        for sg in subgraphs:
+            group = []
+            for node in sg.nodes():
+                group.append(node)
+            if len(group) > max_cluster_size:
+                return out_groups
+            new_out_groups.append(group)
+        out_groups = new_out_groups
     return out_groups
 
 
@@ -75,11 +83,10 @@ def get_repeats(infile, working_dir):
     repeat_count = 0
     for i in repeat_dict:
         repeat_count += len(repeat_dict[i])
-    print infile, repeat_count
     return repeat_dict
 
 
-def run_parsnp(out_groups, working_dir, parsnp, harvesttools):
+def run_parsnp(out_groups, working_dir, parsnp, harvesttools, min_length):
     fastas = []
     filtered = []
     snv_count = {}
@@ -116,7 +123,6 @@ def run_parsnp(out_groups, working_dir, parsnp, harvesttools):
                             for l in range(0, len(k[1]), 60):
                                 out_fasta.write(k[1][l:l+60] + '\n')
                 else:
-                    print 'ding'
                     filtered.append(j)
             vcf_file = working_dir + '/parsnp_' + str(num) + '.vcf'
             subprocess.Popen(parsnp + ' -o ' + working_dir + '/parsnp_' + str(num) + ' -d ' + parsnpdir + ' -r ' + parsnpdir + '/' + ref_fasta.split('/')[-1] + ' -c -x True -P 20000000', shell=True).wait()
@@ -218,8 +224,17 @@ def create_json(working_dir, json):
                                                                         '    "nodes": [\n')
         for i in fastas:
             name = i.split('.')[0]
-            isolate_id = name.split('_')[2]
-            assembly_id = name.split('_')[4]
+            try:
+                isolate_id = name.split('_')[2]
+                if len(isolate_id) != 7:
+                    isolate_id = name.split('_')[0]
+                else:
+                    assembly_id = name.split('_')[4]
+                if len(isolate_id) != 7:
+                    isolate_id = 'na'
+            except:
+                isolate_id = 'na'
+                assembly_id = 'na'
             unit, n50, contigs, max_contig, erap, mlst, coll_date = detail_dict[name]
             out.write('        {\n'
                       '            "assembly_ID": "' + str(assembly_id) + '",\n'
@@ -261,12 +276,14 @@ def create_json(working_dir, json):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--input_folder", help='folder of fasta files')
-parser.add_argument("-o", "--output", help="tsv of snv distances")
-parser.add_argument("-m", "--path_to_mash", help="Path to mash binary")
-parser.add_argument("-p", "--path_to_parsnp", help="Path to parsnp binary")
-parser.add_argument("-t", "--path_to_harvest", help="Path to harvesttools binary")
+parser.add_argument("-o", "--output", help="tsv/json of snv distances")
+parser.add_argument("-m", "--path_to_mash", default='mash', help="Path to mash binary")
+parser.add_argument("-p", "--path_to_parsnp", default='parsnp', help="Path to parsnp binary")
+parser.add_argument("-t", "--path_to_harvest", default='harvesttools', help="Path to harvesttools binary")
 parser.add_argument("-d", "--working_dir", help="working directory")
 parser.add_argument("-x", "--database_only", default=False, action='store_true', help="when given an existing directory calculate mumi can update the snv count with information from pathogendb")
+parser.add_argument("-c", "--max_cluster_size", default=100, help="maximum number of genomes to include in a cluster to be run through parsnp")
+parser.add_argument("-l", "--min_length", default=2000000, help="minimum length of the genome after repeat filtering for inclusion in a cluster")
 args = parser.parse_args()
 
 
@@ -275,9 +292,8 @@ if not os.path.exists(args.working_dir):
 if args.database_only:
     create_json(args.working_dir, args.output)
 else:
-    out_groups = group_snvs(args.input_folder, args.path_to_mash, args.working_dir)
-    sys.exit()
-    filtered, stats = run_parsnp(out_groups, args.working_dir, args.path_to_parsnp, args.path_to_harvest)
+    out_groups = group_snvs(args.input_folder, args.path_to_mash, args.working_dir, args.max_cluster_size)
+    filtered, stats = run_parsnp(out_groups, args.working_dir, args.path_to_parsnp, args.path_to_harvest, args.min_length)
     create_json(args.working_dir, args.output)
     for num, i in enumerate(out_groups):
         if len(i) > 1:
