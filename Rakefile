@@ -181,21 +181,8 @@ file "#{GBLOCKS_DIR}/Gblocks" do
   end
 end
 
-file "pathogendb-comparison.png" => [:graph]
-desc "Generates a graph of tasks, intermediate files and their dependencies from this Rakefile"
-task :graph do
-  # The unflatten step helps with layout; see http://www.graphviz.org/pdf/unflatten.1.pdf
-  system <<-SH
-    module load graphviz
-    OUT_PREFIX=OUT_PREFIX rake -f #{Shellwords.escape(__FILE__)} -P \
-        | #{REPO_DIR}/scripts/rake-prereqs-dot.rb --prune #{REPO_DIR} --replace-with REPO_DIR \
-        | unflatten -f -l5 -c 3 \
-        | dot -Tpng -o pathogendb-comparison.png
-  SH
-end
-
-
-#Pulls down and compiles Harvest Tools (http://harvest.readthedocs.io/en/latest/index.html) used by the Parsnp task
+# pulls down and compiles Harvest Tools used by the Parsnp task
+# see http://harvest.readthedocs.io/en/latest/index.html
 task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/parsnp"]
 directory HARVEST_DIR 
 file "#{HARVEST_DIR}/parsnp" do
@@ -209,6 +196,19 @@ file "#{HARVEST_DIR}/parsnp" do
   end
 end
 
+
+file "pathogendb-comparison.png" => [:graph]
+desc "Generates a graph of tasks, intermediate files and their dependencies from this Rakefile"
+task :graph do
+  # The unflatten step helps with layout; see http://www.graphviz.org/pdf/unflatten.1.pdf
+  system <<-SH
+    module load graphviz
+    OUT_PREFIX=OUT_PREFIX rake -f #{Shellwords.escape(__FILE__)} -P \
+        | #{REPO_DIR}/scripts/rake-prereqs-dot.rb --prune #{REPO_DIR} --replace-with REPO_DIR \
+        | unflatten -f -l5 -c 3 \
+        | dot -Tpng -o pathogendb-comparison.png
+  SH
+end
 
 
 # ==========
