@@ -215,31 +215,42 @@ end
 # = parsnp =
 # ==========
 
-desc "runs Parsnp and creates an *xmfa, *ggr, *tree file"
-task :parsnp => [:check, "snv_distance.tsv"]
+desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
+task :parsnp => [:check, "parsnp.snv_distance.tsv"]
 
-file "snv_distance.tsv" do |t|
+file "parsnp.ggr" do |t|
   # Create necessay directory structure to run parsnp
   dir_name = "#{OUT}/genomes"
-  mkdir_p dir_name unless File.exist?("#{OUT}/genomes")
+  mkdir_p dir_name unless File.exist?(dir_name)
 
   # Copy fasta files to genomes folder
   IN_PATHS.each do |filename|
-   cp(filename,"#{OUT}/genomes")
+    ln_s(filename, "#{OUT}/genomes")
   end
 
-  REF = ENV['REF'] || "!"
-  GBK = ENV['GBK'] || ""
+  if ENV['GBK']
+    referenceOrGenbank = "-g #{Shellwords.escape(ENV['GBK'])}"
+  else
+    referenceOrGenbank = ENV['REF'] ? "-r #{Shellwords.escape(ENV['REF'])}" : "-r !"
+  end
 
-  # Run parsnp
-  mkdir_p "#{OUT}/log"
-  system <<-SH
-    "#{HARVEST_DIR}/parsnp" -c -r "#{REF}" -g "#{GBK}" -o "#{OUT}" -d "#{OUT}/genomes/"
-    "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -V parsnp.vcf
-    "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -N parsnp.nwk
-    "#{HARVEST_DIR}/harvesttools" -i parsnp.ggr -X parsnp.xmfa
-    python #{REPO_DIR}/scripts/parsnp2table.py parsnp.vcf snv_distance.tsv
+  # Run parsnp.
+  system <<-SH or abort
+    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} -c -o "#{OUT}" -d "#{OUT}/genomes/"
   SH
+end
+
+file "parsnp.vcf" => "parsnp.ggr" do |t|
+  system "#{HARVEST_DIR}/harvesttools -i parsnp.ggr -V parsnp.vcf" or abort
+end
+
+# The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
+file "parsnp.nwk" => "parsnp.ggr" do |t|
+  system "#{HARVEST_DIR}/harvesttools -i parsnp.ggr -N parsnp.nwk" or abort
+end
+
+file "parsnp.snv_distance.tsv" => ["parsnp.vcf", "parsnp.nwk"] do |t|
+  system "python #{REPO_DIR}/scripts/parsnp2table.py parsnp.vcf parsnp.snv_distance"
 end
 
 
@@ -493,7 +504,7 @@ def genomes_from_task_name(task_name)
 end
 
 def filtered_to_unfiltered(filtered_path)
-  name = filtered_path.sub("#{OUT_PREFIX}.contig_filter/", '').sub(%r{\.filt\.(fa|fasta)$}, '.\\1')
+  name = File.basename(filtered_path).sub(%r{\.filt\.(fa|fasta)$}, '.\\1')
   IN_PATHS.find{ |path| path =~ /#{name}$/ }
 end
 

@@ -4,22 +4,39 @@ import os
 import _mysql
 
 # parsnp2table.py
-# USE: creates a .tsv and .json of SNV differences between strains from a vcf file produced by parsnp
+# USE: creates a .tsv and .json of SNV differences between strains from a VCF file produced by parsnp
 # USAGE: python parsnp2table.py parsnp.vcf output_prefix
 
+# Note, as per https://harvest.readthedocs.io/en/latest/content/parsnp/quickstart.html
+# "harvest-tools VCF outputs indels in non standard format.
+#  Currently column based, not row based.
+#  Excluding indel rows (default behavior) converts file into valid VCF format.
+#  this will be updated in future version"
+
+# Read in the VCF file
 with open(sys.argv[1]) as vcf:
     getit = False
     for line in vcf:
+        # Skip all lines until we get to the #CHROM line
+        # The first 9 columns are standard VCF columns with allele info
         if line.startswith('#CHROM'):
+            # Get the remaining column headers, which are the names of the input sequences
             seq_list = line.split()[9:]
+            # Start reading rows
             getit = True
+            # Create an empty NxN distance matrix for all N sequences
             var_count = [[0 for i in range(len(seq_list))] for i in range(len(seq_list))]
         elif getit:
+            # Each cell is an allele for a particular sequence
             vars = line.split()[9:]
+            # For every possible pair of sequences, if an allele was called differently, increment
+            # the SNV distance in the matrix by one
             for num1, i in enumerate(vars):
                 for num2, j in enumerate(vars):
                     if vars[num1] != vars[num2]:
                         var_count[num1][num2] += 1
+
+# Open the output TSV file and dump the distance 
 with open(sys.argv[2] + '.tsv', 'w') as out:
     out.write('strains\t' + '\t'.join(seq_list) + '\n')
     for num1, i in enumerate(seq_list):
@@ -27,6 +44,10 @@ with open(sys.argv[2] + '.tsv', 'w') as out:
         for num2 in range(len(seq_list)):
             out.write('\t' + str(var_count[num1][num2]))
         out.write('\n')
+
+# The JSON file requires connecting to the PathogenDB MySQL database
+# Connection details are currently pulled from the user's .my.cnf file
+# TODO: should instead pull from the PATHOGENDB_MYSQL_URI environment variable
 path = os.path.expanduser('~') + '/.my.cnf'
 with open(path) as cnf_file:
     for line in cnf_file:
@@ -39,8 +60,11 @@ with open(path) as cnf_file:
         if line.startswith('database='):
             database = line.rstrip()[9:]
 db = _mysql.connect(host=host, user=user, passwd=pw, db=database)
+
 rejected = []
 out_list = []
+
+# Pull metadata for all the isolates in the VCF file from PathogenDB
 detail_dict = {}
 for isolate in seq_list:
     try:
@@ -55,6 +79,8 @@ for isolate in seq_list:
         detail_dict[isolate.split('.')[0]] = (unit, n50, contigs, max_contig, erap, mlst, order_date)
     except IndexError:
         detail_dict[isolate.split('.')[0]] = (None, None, None, None, None, None, None)
+
+# Spit out the JSON file in the pathogendb-viz heatmap format
 with open(sys.argv[2] + '.json', 'w') as out:
     out.write('{\n'
     '    "distance_unit": "parsnp SNVs",\n'
