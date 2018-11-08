@@ -1,14 +1,17 @@
 require 'rubygems'
 require 'bundler/setup'
+require 'rake-multifile'
 require 'pp'
 require 'net/http'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
 require_relative 'lib/pathogendb_client'
 require_relative 'lib/filter_fasta'
+require_relative 'lib/heatmap_json'
 require 'shellwords'
 require 'json'
 require 'csv'
+require 'tqdm'
 include Colors
 
 task :default => :check
@@ -24,6 +27,7 @@ MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
+MASH_DIR = "#{REPO_DIR}/vendor/mash"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_QUERY = ENV['IN_QUERY']
@@ -57,7 +61,7 @@ IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 # Other environment variables that may be set by the user for specific tasks (see README.md)
 #######
 
-OUT_PREFIX = ENV['OUT_PREFIX'] || "out"
+OUT_PREFIX = ENV['OUT_PREFIX'].gsub(/[^\w-]/, '') || "out"
 
 #############################################################
 #  IMPORTANT!
@@ -151,6 +155,7 @@ file "#{MAUVE_DIR}/linux-x64/progressiveMauve" do
   end
 end
 
+# pulls down and compiles grimm, which is used by the sv_snv track to calculate rearrangement distance
 task :grimm => [:env, GRIMM_DIR, "#{GRIMM_DIR}/grimm"]
 directory GRIMM_DIR
 file "#{GRIMM_DIR}/grimm" do
@@ -166,8 +171,7 @@ file "#{GRIMM_DIR}/grimm" do
   Dir.chdir(GRIMM_DIR){ system "make" }
 end
 
-# pulls down precompiled static binaries and JAR files for Mauve 2.3.1, which is used by the mauve task
-# see http://asap.genetics.wisc.edu/software/mauve/
+# pulls down and compiles Gblocks, which is used by the mugsy task
 task :gblocks => [:env, GBLOCKS_DIR, "#{GBLOCKS_DIR}/Gblocks"]
 directory GBLOCKS_DIR
 file "#{GBLOCKS_DIR}/Gblocks" do
@@ -181,7 +185,7 @@ file "#{GBLOCKS_DIR}/Gblocks" do
   end
 end
 
-# pulls down and compiles Harvest Tools used by the Parsnp task
+# pulls down a precompiled version of Harvest Tools, used by the parsnp task
 # see http://harvest.readthedocs.io/en/latest/index.html
 task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/parsnp"]
 directory HARVEST_DIR 
@@ -192,6 +196,21 @@ file "#{HARVEST_DIR}/parsnp" do
       tar xvzf Harvest-Linux64-v1.1.2.tar.gz
       mv Harvest-Linux64-v1.1.2/* #{Shellwords.escape(HARVEST_DIR)}
       rm -rf "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2" "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2.tar.gz"
+    SH
+  end
+end
+
+# pulls down a precompiled version of mash (fast genome/metagenome distance estimator), used by the parsnp task
+# see https://mash.readthedocs.io/en/latest/
+task :mash => [:env, MASH_DIR, "#{MASH_DIR}/mash"]
+directory MASH_DIR
+file "#{MASH_DIR}/mash" do
+  Dir.chdir(File.dirname(MASH_DIR)) do
+    system <<-SH
+      curl -L -o mash-Linux64-v2.1.tar 'https://github.com/marbl/Mash/releases/download/v2.1/mash-Linux64-v2.1.tar'
+      tar xvf
+      mv mash-Linux64-v2.1/* #{Shellwords.escape(MASH_DIR)}
+      rm -rf mash-Linux64-v2.1.tar mash-Linux64-v2.1
     SH
   end
 end
@@ -208,49 +227,6 @@ task :graph do
         | unflatten -f -l5 -c 3 \
         | dot -Tpng -o pathogendb-comparison.png
   SH
-end
-
-
-# ==========
-# = parsnp =
-# ==========
-
-desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
-task :parsnp => [:check, "parsnp.snv_distance.tsv"]
-
-file "parsnp.ggr" do |t|
-  # Create necessay directory structure to run parsnp
-  dir_name = "#{OUT}/genomes"
-  mkdir_p dir_name unless File.exist?(dir_name)
-
-  # Copy fasta files to genomes folder
-  IN_PATHS.each do |filename|
-    ln_s(filename, "#{OUT}/genomes")
-  end
-
-  if ENV['GBK']
-    referenceOrGenbank = "-g #{Shellwords.escape(ENV['GBK'])}"
-  else
-    referenceOrGenbank = ENV['REF'] ? "-r #{Shellwords.escape(ENV['REF'])}" : "-r !"
-  end
-
-  # Run parsnp.
-  system <<-SH or abort
-    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} -c -o "#{OUT}" -d "#{OUT}/genomes/"
-  SH
-end
-
-file "parsnp.vcf" => "parsnp.ggr" do |t|
-  system "#{HARVEST_DIR}/harvesttools -i parsnp.ggr -V parsnp.vcf" or abort
-end
-
-# The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
-file "parsnp.nwk" => "parsnp.ggr" do |t|
-  system "#{HARVEST_DIR}/harvesttools -i parsnp.ggr -N parsnp.nwk" or abort
-end
-
-file "parsnp.snv_distance.tsv" => ["parsnp.vcf", "parsnp.nwk"] do |t|
-  system "python #{REPO_DIR}/scripts/parsnp2table.py parsnp.vcf parsnp.snv_distance"
 end
 
 
@@ -494,8 +470,9 @@ multitask :sv_snv_files => SV_SNV_FILES
 
 def genomes_from_task_name(task_name)
   genomes = [{:name => task_name.sub("#{OUT_PREFIX}.sv_snv/", '').split(/\//).first}]
-  genomes[1] = {:name => task_name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
-  genomes.each do |g| 
+  genomes << {:name => task_name.sub("#{OUT_PREFIX}.sv_snv/#{genomes[0][:name]}/#{genomes[0][:name]}_", '').split(/\./).first}
+  genomes.each do |g|
+    g[:out_dir] = File.dirname(task_name)
     g[:path] = IN_PATHS.find{ |path| path =~ /#{g[:name]}\.\w+$/ }
     filename = File.basename(g[:path])
     g[:filt_path] = "#{OUT_PREFIX}.contig_filter/#{filename.sub(%r{\.(fa|fasta)$}, '.filt.\\1')}"
@@ -551,11 +528,10 @@ end
 
 # This rule creates a filtered FASTA file from the original that drops any contigs flagged as "merged" or "garbage"
 rule %r{\.filt\.(fa|fasta)$} => proc{ |n| filtered_to_unfiltered(n) } do |task|
-  cp task.source, task.name
-  filter_fasta(task.source, task.name, /_[mg]_/, :invert => true)
+  filter_fasta_by_entry_id(task.source, task.name, /_[mg]_/, :invert => true)
 end
 
-rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| g[:filt_path] } } do |task|
+rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| [g[:filt_path], g[:out_dir]] }.flatten.uniq } do |task|
   genomes = genomes_from_task_name(task.name)
   output = task.name.sub(/\.delta$/, '')
   
@@ -586,7 +562,7 @@ rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.c
   
   system <<-SH
     #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} \
-      --limit #{BED_LINES_LIMIT}\
+      --limit #{BED_LINES_LIMIT} \
       #{Shellwords.escape bed_file}
   SH
   
@@ -612,51 +588,131 @@ HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.he
 desc "Generate assembly distances for heatmap in pathogendb-viz"
 task :heatmap => [:check, HEATMAP_SNV_JSON_FILE]
 SNV_COUNT_FILES = SNV_FILES.map{ |path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
-multitask :snv_count_files => SNV_COUNT_FILES
 
-file HEATMAP_SNV_JSON_FILE => [:sv_snv_dirs, :snv_count_files] do |task|
+multifile HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN or IN_QUERY" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
   
-  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
-  
-  INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
-        :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
-  json = {generated: DateTime.now.to_s, distance_unit: "nucmer SNVs", nodes: [], links: []}
-  json[:in_query] = IN_QUERY if IN_QUERY
-  json[:out_dir] = "#{OUT_PREFIX}.sv_snv"
-  genome_names = IN_PATHS && IN_PATHS.map{ |path| File.basename(path).sub(/\.\w+$/, '') }
-  assemblies = pdb.assemblies(:assembly_data_link => genome_names)
-  node_hash = Hash[genome_names.map{ |n| [n, {}] }]
-  assemblies.each do |row|
-    node_hash[row[:assembly_data_link]][:metadata] = row
-  end
-  node_hash.each do |k, v|
-    node = {name: k}
-    unless v[:metadata]
-      puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"
-      next
+  opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY}
+  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |links, node_hash|
+    SNV_COUNT_FILES.tqdm.each do |count_file|
+      snp_distance = File.read(count_file).strip.to_i
+      genomes = genomes_from_task_name(count_file)
+      source = node_hash[genomes[0][:name]]
+      target = node_hash[genomes[1][:name]]
+      next unless source[:metadata] && target[:metadata]
+      links[source[:id]][target[:id]] = snp_distance
     end
-    INTERESTING_COLS.each { |col| node[col] = v[:metadata][col] }
-    json[:nodes] << node
-    v[:id] = json[:nodes].size - 1
-  end
- 
-  SNV_COUNT_FILES.each do |count_file|
-    snp_distance = File.read(count_file).strip.to_i
-    genomes = genomes_from_task_name(count_file)
-    source = node_hash[genomes[0][:name]]
-    target = node_hash[genomes[1][:name]]
-    next unless source[:metadata] && target[:metadata]
-    json[:links] << {
-      source: source[:id],
-      target: target[:id],
-      value: snp_distance
-    }
   end
  
   File.open(task.name, 'w') { |f| JSON.dump(json, f) }
+end
+
+
+# ==========
+# = parsnp =
+# ==========
+
+HEATMAP_PARSNP_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json"
+HEATMAP_PARSNP_TSV_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.tsv"
+desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
+task :parsnp => [:check, HEATMAP_PARSNP_JSON_FILE]
+
+def repeat_masked_to_filtered(masked_path)
+  name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
+  ["#{OUT_PREFIX}.contig_filter/#{name}", "#{OUT_PREFIX}.repeat_mask"]
+end
+
+directory "#{OUT_PREFIX}.repeat_mask"
+rule %r{\.repeat_mask\.(fa|fasta)$} => proc{ |n| repeat_masked_to_filtered(n) } do |task|
+  fasta_mask_repeats(task.source, task.name)
+end
+REPEAT_MASKED_FILES = (IN_PATHS || []).map do |path|
+  "#{OUT_PREFIX}.repeat_mask/" + File.basename(path).sub(%r{\.(fa|fasta)$}, '.repeat_mask.\\1')
+end
+
+rule %r{#{OUT_PREFIX}\.\d+\.clust} => proc{ |n| } do |t|
+  # TODO
+end
+
+directory "#{OUT_PREFIX}.parsnp"
+multifile "#{OUT_PREFIX}.parsnp/parsnp.ggr" => (["#{OUT_PREFIX}.parsnp"] + REPEAT_MASKED_FILES) do |t|
+  # TODO ... instead of this task as written
+  #  X. filter bad contigs out of the fastas into #{OUT_PREFIX}.contig_filter/*.filt.(fa|fasta), 
+  #     just as in the mummer SNV pathway
+  #  X. filter tandem repeats out of the genomes with mummer, as in calculate_snvs.py, and put 
+  #     the filtered fastas into a "#{OUT_PREFIX}.repeat_mask" directory as 
+  #     .repeat_mask.(fa|fasta) files
+  #  2. cluster them, roughly, by MASH or MUMi distance, and symlink them into
+  #     #{OUT_PREFIX}.0.clust, #{OUT_PREFIX}.1.clust, etc. directories
+  #  3. run parsnp multiple times into #{OUT_PREFIX}.0.parsnp, #{OUT_PREFIX}.1.parsnp etc. 
+  #     directories
+  #  4. each of the #{OUT_PREFIX}.*.parsnp directories will require .vcf and .nwk to be extracted from .ggr
+  #  5. each of the #{OUT_PREFIX}.*.parsnp directories will require a parsnp.snv_distance.tsv file of SNV 
+  #     distances to be calculated
+  #  6. create a "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json" that
+  #     recombines all the TSVs of distances into one big matrix (uncalculated distances are marked as nil
+  #     or infinitely large), and also includes the .nwk trees
+  #     TODO: how to best get the VCF allele information into the JSON file? 
+
+  if ENV['GBK']
+    referenceOrGenbank = "-g #{Shellwords.escape(ENV['GBK'])}"
+  else
+    referenceOrGenbank = ENV['REF'] ? "-r #{Shellwords.escape(ENV['REF'])}" : "-r !"
+  end
+
+  # Run parsnp.
+  system <<-SH or abort
+    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} -c \
+        -o #{OUT_PREFIX}.parsnp/ \
+        -d #{OUT_PREFIX}.repeat_mask/
+  SH
+end
+
+file "#{OUT_PREFIX}.parsnp/parsnp.vcf" => "#{OUT_PREFIX}.parsnp/parsnp.ggr" do |t|
+  dir = "#{OUT_PREFIX}.parsnp"
+  system "#{HARVEST_DIR}/harvesttools -i #{dir}/parsnp.ggr -V #{dir}/parsnp.vcf" or abort
+end
+
+# The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
+# See harvesttools option " -u 0/1 (update the branch values to reflect genome length)"
+file "#{OUT_PREFIX}.parsnp/parsnp.nwk" => "#{OUT_PREFIX}.parsnp/parsnp.ggr" do |t|
+  dir = "#{OUT_PREFIX}.parsnp"
+  system "#{HARVEST_DIR}/harvesttools -i #{dir}/parsnp.ggr -N #{dir}/parsnp.nwk" or abort
+end
+
+PARSNP_OUT_FILES = ["#{OUT_PREFIX}.parsnp/parsnp.vcf", "#{OUT_PREFIX}.parsnp/parsnp.nwk"]
+file HEATMAP_PARSNP_TSV_FILE => PARSNP_OUT_FILES do |t|
+  system <<-SH or abort
+    module load python/2.7.6
+    module load py_packages/2.7
+    python #{REPO_DIR}/scripts/parsnp2table.py #{t.source} #{t.name}
+  SH
+end
+file HEATMAP_PARSNP_JSON_FILE => HEATMAP_PARSNP_TSV_FILE do |t|
+  abort "FATAL: Task parsnp requires specifying IN_FOFN or IN_QUERY" unless IN_PATHS
+  abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task parsnp requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+  snv_tsv = CSV.read(t.source, col_sep: "\t")
+  tsv_key = Hash[snv_tsv.first.drop(1).zip(1..snv_tsv.size)]
+
+  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs"}
+  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |links, node_hash|
+    (node_hash.keys - tsv_key.keys).each do |name|
+      puts "WARN: Assembly #{name} isn't in the parsnp alignment; skipping"
+    end
+    node_hash.each do |source_name, source|
+      node_hash.each do |target_name, target|
+        next unless source[:metadata] && target[:metadata]
+        next unless tsv_key[source_name] && tsv_key[target_name]
+        snp_distance = snv_tsv[tsv_key[source_name]][tsv_key[target_name]].to_i
+        links[source[:id]][target[:id]] = snp_distance
+      end
+    end
+  end
+
+  File.open(t.name, 'w') { |f| JSON.dump(json, f) }
 end
 
 

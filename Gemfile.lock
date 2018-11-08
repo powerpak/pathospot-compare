@@ -4,7 +4,10 @@ GEM
     bio (1.5.1)
     mysql2 (0.4.4)
     rake (10.5.0)
+    rake-multifile (0.1.0)
+      rake (~> 10.0)
     sequel (4.30.0)
+    tqdm (0.3.0)
 
 PLATFORMS
   ruby
@@ -13,7 +16,9 @@ DEPENDENCIES
   bio (~> 1.5.0)
   mysql2 (~> 0.4.4)
   rake (~> 10.5.0)
+  rake-multifile (~> 0.1.0)
   sequel (~> 4.30.0)
+  tqdm (~> 0.3.0)
 
 BUNDLED WITH
    1.12.5
