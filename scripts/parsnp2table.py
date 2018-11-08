@@ -21,7 +21,6 @@ import re
 with open(sys.argv[1]) as vcf:
     start_reading = False
     total_lines = int(subprocess.check_output(['wc', '-l', sys.argv[1]]).split()[0])
-    i = 0
     for line in tqdm(vcf, total=total_lines, desc="Reading VCF file"):
         # Skip all lines until we get to the #CHROM line
         # The first 9 columns are standard VCF columns with allele info
@@ -35,12 +34,11 @@ with open(sys.argv[1]) as vcf:
         elif start_reading:
             # Each cell is an allele for a particular sequence
             vcf_mat[:, i] = map(int, line.split()[9:])
-            i += 1
     
-    dist_mat = np.zeros((len(seq_list), len(seq_list)))
-    for i, seq1 in tqdm(enumerate(seq_list), total=len(seq_list), desc="Calculating SNV distances"):
-        for j, seq2 in enumerate(seq_list):
-            dist_mat[i, j] = np.count_nonzero(vcf_mat[i, :] - vcf_mat[j, :])
+dist_mat = np.zeros((len(seq_list), len(seq_list)))
+for i, seq1 in tqdm(enumerate(seq_list), total=len(seq_list), desc="Calculating SNV distances"):
+    for j, seq2 in enumerate(seq_list):
+        dist_mat[i, j] = np.count_nonzero(vcf_mat[i, :] - vcf_mat[j, :])
 
 # Cleanup the names of sequences, which come with unnecessary suffixes from preprocessing steps
 seq_list = map(lambda x: re.sub(r'(\.\w+)+$', '', x), seq_list)
