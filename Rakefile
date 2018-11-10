@@ -595,14 +595,14 @@ multifile HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
   
   opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY}
-  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |links, node_hash|
+  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
     SNV_COUNT_FILES.tqdm.each do |count_file|
       snp_distance = File.read(count_file).strip.to_i
       genomes = genomes_from_task_name(count_file)
       source = node_hash[genomes[0][:name]]
       target = node_hash[genomes[1][:name]]
       next unless source[:metadata] && target[:metadata]
-      links[source[:id]][target[:id]] = snp_distance
+      json[:links][source[:id]][target[:id]] = snp_distance
     end
   end
  
@@ -698,7 +698,7 @@ file HEATMAP_PARSNP_JSON_FILE => HEATMAP_PARSNP_TSV_FILE do |t|
   tsv_key = Hash[snv_tsv.first.drop(1).zip(1..snv_tsv.size)]
 
   opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs"}
-  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |links, node_hash|
+  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
     (node_hash.keys - tsv_key.keys).each do |name|
       puts "WARN: Assembly #{name} isn't in the parsnp alignment; skipping"
     end
@@ -707,7 +707,7 @@ file HEATMAP_PARSNP_JSON_FILE => HEATMAP_PARSNP_TSV_FILE do |t|
         next unless source[:metadata] && target[:metadata]
         next unless tsv_key[source_name] && tsv_key[target_name]
         snp_distance = snv_tsv[tsv_key[source_name]][tsv_key[target_name]].to_i
-        links[source[:id]][target[:id]] = snp_distance
+        json[:links][source[:id]][target[:id]] = snp_distance
       end
     end
   end

@@ -32,6 +32,6 @@ def heatmap_json(in_paths, mysql_uri, opts)
   end
 
   json[:links] = Array.new(json[:nodes].size - 1){ Array.new(json[:nodes].size - 1, nil) }
-  yield(json[:links], node_hash)
+  yield(json, node_hash)
   json
 end
