@@ -7,9 +7,12 @@ import subprocess
 import numpy as np
 import re
 
-# parsnp2table.py
-# USE: creates a .tsv of SNV differences between strains from a VCF file produced by parsnp
-# USAGE: python parsnp2table.py parsnp.vcf output.tsv
+USAGE = """
+parsnp2table.py
+Creates a .tsv of SNV differences between strains from a VCF file produced by parsnp
+
+USAGE: python parsnp2table.py parsnp.vcf output.tsv
+"""
 
 # Note, as per https://harvest.readthedocs.io/en/latest/content/parsnp/quickstart.html
 # "harvest-tools VCF outputs indels in non standard format.
@@ -17,10 +20,15 @@ import re
 #  Excluding indel rows (default behavior) converts file into valid VCF format.
 #  this will be updated in future version"
 
+if len(sys.argv) < 3:
+    print USAGE
+    sys.exit(1)
+
 # Read in the VCF file
 with open(sys.argv[1]) as vcf:
     start_reading = False
     total_lines = int(subprocess.check_output(['wc', '-l', sys.argv[1]]).split()[0])
+    i = 0
     for line in tqdm(vcf, total=total_lines, desc="Reading VCF file"):
         # Skip all lines until we get to the #CHROM line
         # The first 9 columns are standard VCF columns with allele info
@@ -34,6 +42,7 @@ with open(sys.argv[1]) as vcf:
         elif start_reading:
             # Each cell is an allele for a particular sequence
             vcf_mat[:, i] = map(int, line.split()[9:])
+            i += 1
     
 dist_mat = np.zeros((len(seq_list), len(seq_list)))
 for i, seq1 in tqdm(enumerate(seq_list), total=len(seq_list), desc="Calculating SNV distances"):

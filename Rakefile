@@ -61,7 +61,7 @@ IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 # Other environment variables that may be set by the user for specific tasks (see README.md)
 #######
 
-OUT_PREFIX = ENV['OUT_PREFIX'].gsub(/[^\w-]/, '') || "out"
+OUT_PREFIX = ENV['OUT_PREFIX'] ? ENV['OUT_PREFIX'].gsub(/[^\w-]/, '') : "out"
 
 #############################################################
 #  IMPORTANT!
@@ -677,12 +677,17 @@ end
 
 # The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
 # See harvesttools option " -u 0/1 (update the branch values to reflect genome length)"
-file "#{OUT_PREFIX}.parsnp/parsnp.nwk" => "#{OUT_PREFIX}.parsnp/parsnp.ggr" do |t|
+file "#{OUT_PREFIX}.parsnp/parsnp.clean.nwk" => "#{OUT_PREFIX}.parsnp/parsnp.ggr" do |t|
   dir = "#{OUT_PREFIX}.parsnp"
   system "#{HARVEST_DIR}/harvesttools -i #{dir}/parsnp.ggr -N #{dir}/parsnp.nwk" or abort
+  system <<-SH or abort
+    module load python/2.7.6
+    module load py_packages/2.7
+    python #{REPO_DIR}/scripts/cleanup_parsnp_newick.py #{dir}/parsnp.nwk #{dir}/parsnp.clean.nwk
+  SH
 end
 
-PARSNP_OUT_FILES = ["#{OUT_PREFIX}.parsnp/parsnp.vcf", "#{OUT_PREFIX}.parsnp/parsnp.nwk"]
+PARSNP_OUT_FILES = ["#{OUT_PREFIX}.parsnp/parsnp.vcf", "#{OUT_PREFIX}.parsnp/parsnp.clean.nwk"]
 file HEATMAP_PARSNP_TSV_FILE => PARSNP_OUT_FILES do |t|
   system <<-SH or abort
     module load python/2.7.6
@@ -710,6 +715,7 @@ file HEATMAP_PARSNP_JSON_FILE => HEATMAP_PARSNP_TSV_FILE do |t|
         json[:links][source[:id]][target[:id]] = snp_distance
       end
     end
+    json[:trees] = [File.read("#{OUT_PREFIX}.parsnp/parsnp.clean.nwk").strip]
   end
 
   File.open(t.name, 'w') { |f| JSON.dump(json, f) }
