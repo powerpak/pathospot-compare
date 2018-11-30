@@ -27,6 +27,7 @@ MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
+
 MASH_DIR = "#{REPO_DIR}/vendor/mash"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
@@ -199,6 +200,7 @@ file "#{HARVEST_DIR}/parsnp" do
     SH
   end
 end
+
 
 # pulls down a precompiled version of mash (fast genome/metagenome distance estimator), used by the parsnp task
 # see https://mash.readthedocs.io/en/latest/
@@ -607,6 +609,28 @@ multifile HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
   end
  
   File.open(task.name, 'w') { |f| JSON.dump(json, f) }
+end
+
+
+# ============
+# = heatmap3 =
+# ============
+
+HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap3.json"
+desc "Generate assembly distances for heatmap in pathogendb-viz (mode 3)"
+task :heatmap3 => [:check, HEATMAP_SNV_JSON_FILE]
+
+file HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
+  abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
+  abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
+  mkdir_p "#{OUT}/heatmap_wd"
+  system <<-SH or abort
+    module load python/2.7.6
+    module load py_packages/2.7
+    module load mummer
+    module load mash
+    python #{REPO_DIR}/scripts/calculate_snvs.py --fofn #{IN_FOFN} --path_to_mash #{MASH_DIR}/mash --path_to_parsnp #{HARVEST_DIR}/parsnp --path_to_harvest #{HARVEST_DIR}/harvesttools --working_dir #{OUT}/heatmap_wd --output #{HEATMAP_SNV_JSON_FILE}
+  SH
 end
 
 

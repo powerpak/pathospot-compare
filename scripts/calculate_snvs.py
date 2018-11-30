@@ -24,12 +24,8 @@ def get_fasta_list(fasta_name):
                 out_list.append((header, seq))
     return out_list
 
-def group_snvs(input_folder, mash, working_dir, max_cluster_size):
-    fasta_list = []
+def group_snvs(fasta_list, mash, working_dir, max_cluster_size):
     G = nx.Graph()
-    for file in os.listdir(input_folder):
-        if file.endswith('.fa') or file.endswith('.fna') or file.endswith('.fasta'):
-            fasta_list.append(input_folder + '/' + file)
     subprocess.Popen(mash + ' sketch -o ' + working_dir + '/reference.msh ' + ' '.join(fasta_list), shell=True).wait()
     edge_list = []
     cutoff = 0.75
@@ -275,7 +271,7 @@ def create_json(working_dir, json):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-f", "--input_folder", help='folder of fasta files')
+parser.add_argument("-f", "--fofn", help='fofn of input fastas')
 parser.add_argument("-o", "--output", help="tsv/json of snv distances")
 parser.add_argument("-m", "--path_to_mash", default='mash', help="Path to mash binary")
 parser.add_argument("-p", "--path_to_parsnp", default='parsnp', help="Path to parsnp binary")
@@ -292,7 +288,10 @@ if not os.path.exists(args.working_dir):
 if args.database_only:
     create_json(args.working_dir, args.output)
 else:
-    out_groups = group_snvs(args.input_folder, args.path_to_mash, args.working_dir, args.max_cluster_size)
+    fasta_list = []
+    with open(args.fofn) as f:
+        fasta_list.append(line.rstrip())
+    out_groups = group_snvs(fasta_list, args.path_to_mash, args.working_dir, args.max_cluster_size)
     filtered, stats = run_parsnp(out_groups, args.working_dir, args.path_to_parsnp, args.path_to_harvest, args.min_length)
     create_json(args.working_dir, args.output)
     for num, i in enumerate(out_groups):
