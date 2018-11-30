@@ -210,7 +210,7 @@ file "#{MASH_DIR}/mash" do
   Dir.chdir(File.dirname(MASH_DIR)) do
     system <<-SH
       curl -L -o mash-Linux64-v2.1.tar 'https://github.com/marbl/Mash/releases/download/v2.1/mash-Linux64-v2.1.tar'
-      tar xvf
+      tar xvf mash-Linux64-v2.1.tar
       mv mash-Linux64-v2.1/* #{Shellwords.escape(MASH_DIR)}
       rm -rf mash-Linux64-v2.1.tar mash-Linux64-v2.1
     SH
