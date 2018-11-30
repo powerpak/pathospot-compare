@@ -204,7 +204,7 @@ end
 
 # pulls down a precompiled version of mash (fast genome/metagenome distance estimator), used by the parsnp task
 # see https://mash.readthedocs.io/en/latest/
-task :mash => [:env, MASH_DIR, "#{MASH_DIR}/mash"]
+task :mash_install => [:env, MASH_DIR, "#{MASH_DIR}/mash"]
 directory MASH_DIR
 file "#{MASH_DIR}/mash" do
   Dir.chdir(File.dirname(MASH_DIR)) do
