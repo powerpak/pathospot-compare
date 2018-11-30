@@ -290,7 +290,8 @@ if args.database_only:
 else:
     fasta_list = []
     with open(args.fofn) as f:
-        fasta_list.append(line.rstrip())
+        for line in f:
+            fasta_list.append(line.rstrip())
     out_groups = group_snvs(fasta_list, args.path_to_mash, args.working_dir, args.max_cluster_size)
     filtered, stats = run_parsnp(out_groups, args.working_dir, args.path_to_parsnp, args.path_to_harvest, args.min_length)
     create_json(args.working_dir, args.output)

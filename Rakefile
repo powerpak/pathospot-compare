@@ -627,8 +627,7 @@ file HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
-    module load mummer
-    module load mash
+    module load mummer/3.23
     python #{REPO_DIR}/scripts/calculate_snvs.py --fofn #{IN_FOFN} --path_to_mash #{MASH_DIR}/mash --path_to_parsnp #{HARVEST_DIR}/parsnp --path_to_harvest #{HARVEST_DIR}/harvesttools --working_dir #{OUT}/heatmap_wd --output #{HEATMAP_SNV_JSON_FILE}
   SH
 end
