@@ -89,7 +89,7 @@ ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` be
 
 desc "Checks environment variables and requirements before running tasks"
 task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, 
-    :mauve_install, :grimm, :gblocks, :harvest_install] do
+    :mauve_install, :grimm, :gblocks, :harvest_install, :mash_install] do
   mkdir_p ENV['TMP'] or abort "FATAL: set TMP to a directory that can store scratch files"
 end
 
