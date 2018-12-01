@@ -272,6 +272,7 @@ def create_json(working_dir, json):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--fofn", help='fofn of input fastas')
+parser.add_argument('fastas', nargs='*', help='list of FASTA files')
 parser.add_argument("-o", "--output", help="tsv/json of snv distances")
 parser.add_argument("-m", "--path_to_mash", default='mash', help="Path to mash binary")
 parser.add_argument("-p", "--path_to_parsnp", default='parsnp', help="Path to parsnp binary")
@@ -283,15 +284,20 @@ parser.add_argument("-l", "--min_length", default=2000000, help="minimum length 
 args = parser.parse_args()
 
 
+print args.fastas
+
 if not os.path.exists(args.working_dir):
     os.makedirs(args.working_dir)
 if args.database_only:
     create_json(args.working_dir, args.output)
 else:
     fasta_list = []
-    with open(args.fofn) as f:
-        for line in f:
-            fasta_list.append(line.rstrip())
+    if not args.fofn is None:
+        with open(args.fofn) as f:
+            for line in f:
+                fasta_list.append(line.rstrip())
+    else:
+        fasta_list = args.fastas
     out_groups = group_snvs(fasta_list, args.path_to_mash, args.working_dir, args.max_cluster_size)
     filtered, stats = run_parsnp(out_groups, args.working_dir, args.path_to_parsnp, args.path_to_harvest, args.min_length)
     create_json(args.working_dir, args.output)

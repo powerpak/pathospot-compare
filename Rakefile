@@ -621,14 +621,14 @@ desc "Generate assembly distances for heatmap in pathogendb-viz (mode 3)"
 task :heatmap3 => [:check, HEATMAP_SNV_JSON_FILE]
 
 file HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
-  abort "FATAL: Task heatmap requires specifying IN_FOFN" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   mkdir_p "#{OUT}/heatmap_wd"
+  paths = IN_PATHS.map{ |f| Shellwords.escape(f.strip) }.join(' ')
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
     module load mummer/3.23
-    python #{REPO_DIR}/scripts/calculate_snvs.py --fofn #{IN_FOFN} --path_to_mash #{MASH_DIR}/mash --path_to_parsnp #{HARVEST_DIR}/parsnp --path_to_harvest #{HARVEST_DIR}/harvesttools --working_dir #{OUT}/heatmap_wd --output #{HEATMAP_SNV_JSON_FILE}
+    python #{REPO_DIR}/scripts/calculate_snvs.py --path_to_mash #{MASH_DIR}/mash --path_to_parsnp #{HARVEST_DIR}/parsnp --path_to_harvest #{HARVEST_DIR}/harvesttools --working_dir #{OUT}/heatmap_wd --output #{HEATMAP_SNV_JSON_FILE} #{paths}
   SH
 end
 
