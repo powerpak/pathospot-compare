@@ -27,7 +27,6 @@ MAUVE_DIR = "#{REPO_DIR}/vendor/mauve"
 GRIMM_DIR = "#{REPO_DIR}/vendor/grimm"
 GBLOCKS_DIR = "#{REPO_DIR}/vendor/gblocks"
 HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
-
 MASH_DIR = "#{REPO_DIR}/vendor/mash"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
@@ -99,11 +98,11 @@ task :mugsy_install => [:env, MUGSY_DIR, "#{MUGSY_DIR}/mugsy"]
 directory MUGSY_DIR
 file "#{MUGSY_DIR}/mugsy" do
   Dir.chdir(File.dirname(MUGSY_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o mugsy.tar.gz 'http://sourceforge.net/projects/mugsy/files/mugsy_x86-64-v1r2.2.tgz/download'
       tar xvzf mugsy.tar.gz
-      mv mugsy_x86-64-v1r2.2/* '#{MUGSY_DIR}'
-      rm -rf mugsy_x86-64-v1r2.2 mugsy.tar.gz
+      mv mugsy_x86-64-v1r2.2/* '#{MUGSY_DIR}' && \
+          rm -rf mugsy_x86-64-v1r2.2 mugsy.tar.gz
     SH
   end
 end
@@ -114,11 +113,11 @@ task :clustalw => [:env, CLUSTALW_DIR, "#{CLUSTALW_DIR}/clustalw2"]
 directory CLUSTALW_DIR
 file "#{CLUSTALW_DIR}/clustalw2" do
   Dir.chdir(File.dirname(CLUSTALW_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o clustalw.tar.gz 'http://www.clustal.org/download/current/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz'
       tar xvzf clustalw.tar.gz
-      mv clustalw-2.1-linux-x86_64-libcppstatic/* #{Shellwords.escape(CLUSTALW_DIR)}
-      rm -rf clustalw-2.1-linux-x86_64-libcppstatic clustalw.tar.gz
+      mv clustalw-2.1-linux-x86_64-libcppstatic/* #{CLUSTALW_DIR.shellescape} && \
+          rm -rf clustalw-2.1-linux-x86_64-libcppstatic clustalw.tar.gz
     SH
   end
 end
@@ -129,14 +128,14 @@ task :raxml => [:env, RAXML_DIR, "#{RAXML_DIR}/raxmlHPC"]
 directory RAXML_DIR
 file "#{RAXML_DIR}/raxmlHPC" do
   Dir.chdir(File.dirname(CLUSTALW_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o raxml.tar.gz 'https://github.com/stamatak/standard-RAxML/archive/v8.0.2.tar.gz'
-      tar xvzf raxml.tar.gz
-      rm raxml.tar.gz
+      tar xvzf raxml.tar.gz && \
+          rm raxml.tar.gz
     SH
   end
   Dir.chdir("#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2") do
-    system "make -f Makefile.gcc" and cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")
+    (system "make -f Makefile.gcc" and cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")) or abort
   end
   rm_rf "#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2"
 end
@@ -147,11 +146,11 @@ task :mauve_install => [:env, MAUVE_DIR, "#{MAUVE_DIR}/linux-x64/progressiveMauv
 directory MAUVE_DIR
 file "#{MAUVE_DIR}/linux-x64/progressiveMauve" do
   Dir.chdir(File.dirname(MAUVE_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o mauve.tar.gz 'http://darlinglab.org/mauve/downloads/mauve_linux_2.4.0.tar.gz'
       tar xvzf mauve.tar.gz
-      mv mauve_2.4.0/* #{Shellwords.escape(MAUVE_DIR)}
-      rm -rf mauve.tar.gz mauve_linux_2.4.0.tar.gz
+      mv mauve_2.4.0/* #{MAUVE_DIR.shellescape} && \
+          rm -rf mauve.tar.gz mauve_linux_2.4.0.tar.gz
     SH
   end
 end
@@ -161,15 +160,15 @@ task :grimm => [:env, GRIMM_DIR, "#{GRIMM_DIR}/grimm"]
 directory GRIMM_DIR
 file "#{GRIMM_DIR}/grimm" do
   Dir.chdir(File.dirname(GRIMM_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o grimm.tar.gz 'http://grimm.ucsd.edu/DIST/GRIMM-2.01.tar.gz'
       tar xvzf grimm.tar.gz
-      mv GRIMM-2.01/* #{Shellwords.escape(GRIMM_DIR)}
-      rm -rf GRIMM-2.01 grimm.tar.gz
-      sed -i.bak 's/-march=pentiumpro//g' #{Shellwords.escape(GRIMM_DIR)}/Makefile
+      mv GRIMM-2.01/* #{GRIMM_DIR.shellescape} && \
+          rm -rf GRIMM-2.01 grimm.tar.gz && \
+          sed -i.bak 's/-march=pentiumpro//g' #{GRIMM_DIR.shellescape}/Makefile
     SH
   end
-  Dir.chdir(GRIMM_DIR){ system "make" }
+  Dir.chdir(GRIMM_DIR){ system "make" or abort }
 end
 
 # pulls down and compiles Gblocks, which is used by the mugsy task
@@ -177,11 +176,11 @@ task :gblocks => [:env, GBLOCKS_DIR, "#{GBLOCKS_DIR}/Gblocks"]
 directory GBLOCKS_DIR
 file "#{GBLOCKS_DIR}/Gblocks" do
   Dir.chdir(File.dirname(GBLOCKS_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o gblocks.tar.gz 'http://molevol.cmima.csic.es/castresana/Gblocks/Gblocks_Linux64_0.91b.tar.Z'
       tar xvzf gblocks.tar.gz
-      mv Gblocks_0.91b/* #{Shellwords.escape(GBLOCKS_DIR)}
-      rm -rf gblocks.tar.gz Gblocks_0.91b
+      mv Gblocks_0.91b/* #{GBLOCKS_DIR.shellescape} && \
+          rm -rf gblocks.tar.gz Gblocks_0.91b
     SH
   end
 end
@@ -192,11 +191,11 @@ task :harvest_install => [:env, HARVEST_DIR, "#{HARVEST_DIR}/parsnp"]
 directory HARVEST_DIR 
 file "#{HARVEST_DIR}/parsnp" do
   Dir.chdir(File.dirname(HARVEST_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o Harvest-Linux64-v1.1.2.tar.gz 'https://github.com/marbl/harvest/releases/download/v1.1.2/Harvest-Linux64-v1.1.2.tar.gz'
       tar xvzf Harvest-Linux64-v1.1.2.tar.gz
-      mv Harvest-Linux64-v1.1.2/* #{Shellwords.escape(HARVEST_DIR)}
-      rm -rf "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2" "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2.tar.gz"
+      mv Harvest-Linux64-v1.1.2/* #{HARVEST_DIR.shellescape} && \
+          rm -rf "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2" "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2.tar.gz"
     SH
   end
 end
@@ -208,11 +207,11 @@ task :mash_install => [:env, MASH_DIR, "#{MASH_DIR}/mash"]
 directory MASH_DIR
 file "#{MASH_DIR}/mash" do
   Dir.chdir(File.dirname(MASH_DIR)) do
-    system <<-SH
+    system <<-SH or abort
       curl -L -o mash-Linux64-v2.1.tar 'https://github.com/marbl/Mash/releases/download/v2.1/mash-Linux64-v2.1.tar'
       tar xvf mash-Linux64-v2.1.tar
-      mv mash-Linux64-v2.1/* #{Shellwords.escape(MASH_DIR)}
-      rm -rf mash-Linux64-v2.1.tar mash-Linux64-v2.1
+      mv mash-Linux64-v2.1/* #{MASH_DIR.shellescape} && \
+          rm -rf mash-Linux64-v2.1.tar mash-Linux64-v2.1
     SH
   end
 end
@@ -247,7 +246,7 @@ file "#{OUT_PREFIX}.fa" do |t|
   
   mkdir_p "#{OUT}/log"
   
-  paths = IN_PATHS.map{ |f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{ |f| f.strip.shellescape }.join(' ')
   
   LSF.set_out_err("log/mugsy.log", "log/mugsy.err.log")
   LSF.job_name "#{OUT_PREFIX}.fa"
@@ -369,7 +368,7 @@ task :mugsy_plot => [:check, "RAxML_bestTree.#{OUT_PREFIX}.pdf", "#{OUT_PREFIX}_
 file "RAxML_bestTree.#{OUT_PREFIX}.pdf" => "RAxML_bestTree.#{OUT_PREFIX}" do |t|
   abort "FATAL: Task mugsy_plot requires specifying OUT_PREFIX" unless OUT_PREFIX
   
-  tree_file = Shellwords.escape "RAxML_bestTree.#{OUT_PREFIX}"
+  tree_file = "RAxML_bestTree.#{OUT_PREFIX}".shellescape
   system <<-SH
     module load R/3.1.0
     R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}
@@ -379,7 +378,7 @@ end
 file "#{OUT_PREFIX}_snp_tree.newick.pdf" => "#{OUT_PREFIX}_snp_tree.newick" do |t|
   abort "FATAL: Task mugsy_plot requires specifying OUT_PREFIX" unless OUT_PREFIX
   
-  tree_file = Shellwords.escape "#{OUT_PREFIX}_snp_tree.newick"
+  tree_file = "#{OUT_PREFIX}_snp_tree.newick".shellescape
   system <<-SH
     module load R/3.1.0
     R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}
@@ -405,7 +404,7 @@ file "#{OUT_PREFIX}.xmfa" do |t|
   tree_directory = OUT
   mkdir_p "#{OUT}/log"
   
-  paths = IN_PATHS.map{ |f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{ |f| f.strip.shellescape }.join(' ')
   
   LSF.set_out_err("log/mauve.log", "log/mauve.err.log")
   LSF.job_name "#{OUT_PREFIX}.xmfa"
@@ -503,7 +502,7 @@ rule '.xmfa.backbone' do |task|
   # have to figure out why? Isn't fatal, because it doesn't create the .backbone file if it fails like this, and so can simply re-run rake
   system <<-SH
     #{MAUVE_DIR}/linux-x64/progressiveMauve --output=#{output} --seed-weight=#{ENV['SEED_WEIGHT']} \
-         --weight=#{ENV['LCB_WEIGHT']} #{Shellwords.escape genomes[0][:path]} #{Shellwords.escape genomes[1][:path]}
+         --weight=#{ENV['LCB_WEIGHT']} #{genomes[0][:path].shellescape} #{genomes[1][:path].shellescape}
   SH
 end
 
@@ -514,12 +513,12 @@ rule %r{\.sv\.bed$} => proc{ |n| n.sub(%r{\.sv\.bed$}, '.xmfa.backbone') } do |t
   grimm_file = task.name.sub(/\.sv\.bed$/, '.grimm')
   
   system <<-SH or abort
-    #{REPO_DIR}/scripts/backbone-to-grimm.rb #{Shellwords.escape backbone_file} \
-        --ref #{Shellwords.escape genomes[0][:path]} \
-        --query #{Shellwords.escape genomes[1][:path]} \
+    #{REPO_DIR}/scripts/backbone-to-grimm.rb #{backbone_file.shellescape} \
+        --ref #{genomes[0][:path].shellescape} \
+        --query #{genomes[1][:path].shellescape} \
         --grimm #{GRIMM_DIR}/grimm \
-        --bed #{Shellwords.escape task.name} \
-        #{Shellwords.escape grimm_file}
+        --bed #{task.name.shellescape} \
+        #{grimm_file.shellescape}
   SH
 end
 
@@ -539,14 +538,14 @@ rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| [g[:filt_path], g[
   
   system <<-SH
     module load mummer/3.23
-    nucmer -p #{output} #{Shellwords.escape genomes[0][:filt_path]} #{Shellwords.escape genomes[1][:filt_path]}
+    nucmer -p #{output} #{genomes[0][:filt_path].shellescape} #{genomes[1][:filt_path].shellescape}
   SH
 end
 
 rule '.filtered-delta' => '.delta' do |task|  
   system <<-SH
     module load mummer/3.23
-    delta-filter -r -q #{Shellwords.escape task.source} > #{Shellwords.escape task.name}
+    delta-filter -r -q #{task.source.shellescape} > #{task.name.shellescape}
   SH
 end
 
@@ -557,15 +556,15 @@ rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.c
   
   system <<-SH or abort
     module load mummer/3.23
-    show-snps -IHTClr #{Shellwords.escape task.source} > #{Shellwords.escape snps_file}
+    show-snps -IHTClr #{task.source.shellescape} > #{snps_file.shellescape}
   SH
   
-  File.open("#{snps_file}.count", 'w') { |f| f.write(`wc -l #{Shellwords.escape snps_file}`.strip.split(' ')[0]) }
+  File.open("#{snps_file}.count", 'w') { |f| f.write(`wc -l #{snps_file.shellescape}`.strip.split(' ')[0]) }
   
   system <<-SH
-    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{Shellwords.escape snps_file} \
+    #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{snps_file.shellescape} \
       --limit #{BED_LINES_LIMIT} \
-      #{Shellwords.escape bed_file}
+      #{bed_file.shellescape}
   SH
   
   verbose(false) { rm snps_file }  # because these are typically huge, and redundant w/ the BED files
@@ -577,7 +576,7 @@ end
 rule %r{\.sv_snv\.bed$} => proc{ |n| [n.sub(%r{\.sv_snv\.bed$}, '.snv.bed'), 
     n.sub(%r{\.sv_snv\.bed$}, '.sv.bed')] } do |task|
   system <<-SH or abort
-    cat #{Shellwords.escape task.sources[0]} #{Shellwords.escape task.sources[1]} > #{Shellwords.escape task.name}
+    cat #{task.sources[0].shellescape} #{task.sources[1].shellescape} > #{task.name.shellescape}
   SH
 end
 
@@ -591,7 +590,7 @@ desc "Generate assembly distances for heatmap in pathogendb-viz"
 task :heatmap => [:check, HEATMAP_SNV_JSON_FILE]
 SNV_COUNT_FILES = SNV_FILES.map{ |path| path.sub(%r{\.snv\.bed$}, '.snps.count') }
 
-multifile HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
+multifile HEATMAP_SNV_JSON_FILE => SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN or IN_QUERY" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
@@ -616,14 +615,14 @@ end
 # = heatmap3 =
 # ============
 
-HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap3.json"
+HEATMAP3_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap3.json"
 desc "Generate assembly distances for heatmap in pathogendb-viz (mode 3)"
 task :heatmap3 => [:check, HEATMAP_SNV_JSON_FILE]
 
-file HEATMAP_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task|
+file HEATMAP3_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task| #FIXME
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   mkdir_p "#{OUT}/heatmap_wd"
-  paths = IN_PATHS.map{ |f| Shellwords.escape(f.strip) }.join(' ')
+  paths = IN_PATHS.map{ |f| f.strip.shellescape }.join(' ')
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
@@ -637,111 +636,229 @@ end
 # = parsnp =
 # ==========
 
-HEATMAP_PARSNP_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json"
-HEATMAP_PARSNP_TSV_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.tsv"
-desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
-task :parsnp => [:check, HEATMAP_PARSNP_JSON_FILE]
+# The steps used to build a .parsnp.heatmap.json file are:
+#  0. filter bad contigs out of the fastas into #{OUT_PREFIX}.contig_filter/*.filt.(fa|fasta), 
+#     just as in the mummer SNV pathway
+#  1. filter tandem repeats out of the genomes with mummer, as in calculate_snvs.py, and put 
+#     the filtered fastas into a "#{OUT_PREFIX}.repeat_mask" directory as 
+#     .repeat_mask.(fa|fasta) files
+#  2. cluster them, roughly, by MASH or MUMi distance, and copy/symlink them into
+#     #{OUT_PREFIX}.0.clust, #{OUT_PREFIX}.1.clust, etc. directories
+#  3. run parsnp on each cluster, outputting into #{OUT_PREFIX}.0.parsnp, #{OUT_PREFIX}.1.parsnp etc. 
+#     directories
+#  4. in each of the #{OUT_PREFIX}.*.parsnp directories, extract the .vcf and .nwk from the .ggr, and 
+#     clean the sequence names in the .nwk producing a .clean.nwk tree file
+#  5. in each of the #{OUT_PREFIX}.*.parsnp directories, create a parsnp.tsv file of SNV distances from 
+#     the .vcf
+#  6. create a "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json" that
+#     recombines all the TSVs of distances into one big matrix (uncalculated distances are marked as nil
+#     or infinitely large), and also includes the .clean.nwk trees
+#     TODO: how to best get the VCF allele information into the JSON file? 
 
-def repeat_masked_to_filtered(masked_path)
+HEATMAP_PARSNP_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json"
+HEATMAP_PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
+desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
+task :parsnp => [:check, HEATMAP_PARSNP_CLUSTERS_TSV, HEATMAP_PARSNP_JSON_FILE]
+
+directory "#{OUT_PREFIX}.repeat_mask"
+def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
   ["#{OUT_PREFIX}.contig_filter/#{name}", "#{OUT_PREFIX}.repeat_mask"]
 end
-
-directory "#{OUT_PREFIX}.repeat_mask"
-rule %r{\.repeat_mask\.(fa|fasta)$} => proc{ |n| repeat_masked_to_filtered(n) } do |task|
-  fasta_mask_repeats(task.source, task.name)
+rule %r{^#{OUT_PREFIX}.repeat_mask/.+\.(fa|fasta)$} => proc{ |n| repeat_masked_prereqs(n) } do |t|
+  fasta_mask_repeats(t.source, t.name)
 end
+
 REPEAT_MASKED_FILES = (IN_PATHS || []).map do |path|
   "#{OUT_PREFIX}.repeat_mask/" + File.basename(path).sub(%r{\.(fa|fasta)$}, '.repeat_mask.\\1')
 end
 
-rule %r{#{OUT_PREFIX}\.\d+\.clust} => proc{ |n| } do |t|
-  # TODO
-end
-
-directory "#{OUT_PREFIX}.parsnp"
-multifile "#{OUT_PREFIX}.parsnp/parsnp.ggr" => (["#{OUT_PREFIX}.parsnp"] + REPEAT_MASKED_FILES) do |t|
-  # TODO ... instead of this task as written
-  #  X. filter bad contigs out of the fastas into #{OUT_PREFIX}.contig_filter/*.filt.(fa|fasta), 
-  #     just as in the mummer SNV pathway
-  #  X. filter tandem repeats out of the genomes with mummer, as in calculate_snvs.py, and put 
-  #     the filtered fastas into a "#{OUT_PREFIX}.repeat_mask" directory as 
-  #     .repeat_mask.(fa|fasta) files
-  #  2. cluster them, roughly, by MASH or MUMi distance, and symlink them into
-  #     #{OUT_PREFIX}.0.clust, #{OUT_PREFIX}.1.clust, etc. directories
-  #  3. run parsnp multiple times into #{OUT_PREFIX}.0.parsnp, #{OUT_PREFIX}.1.parsnp etc. 
-  #     directories
-  #  4. each of the #{OUT_PREFIX}.*.parsnp directories will require .vcf and .nwk to be extracted from .ggr
-  #  5. each of the #{OUT_PREFIX}.*.parsnp directories will require a parsnp.snv_distance.tsv file of SNV 
-  #     distances to be calculated
-  #  6. create a "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json" that
-  #     recombines all the TSVs of distances into one big matrix (uncalculated distances are marked as nil
-  #     or infinitely large), and also includes the .nwk trees
-  #     TODO: how to best get the VCF allele information into the JSON file? 
-
-  if ENV['GBK']
-    referenceOrGenbank = "-g #{Shellwords.escape(ENV['GBK'])}"
-  else
-    referenceOrGenbank = ENV['REF'] ? "-r #{Shellwords.escape(ENV['REF'])}" : "-r !"
-  end
-
-  # Run parsnp.
+file "#{OUT_PREFIX}.repeat_mask.msh" => REPEAT_MASKED_FILES do |t|
+  fasta_files = REPEAT_MASKED_FILES.map(&:strip).map(&:shellescape).join(' ')
   system <<-SH or abort
-    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} -c \
-        -o #{OUT_PREFIX}.parsnp/ \
-        -d #{OUT_PREFIX}.repeat_mask/
+    #{MASH_DIR}/mash sketch -o #{t.name.shellescape} #{fasta_files}
   SH
 end
 
-file "#{OUT_PREFIX}.parsnp/parsnp.vcf" => "#{OUT_PREFIX}.parsnp/parsnp.ggr" do |t|
-  dir = "#{OUT_PREFIX}.parsnp"
-  system "#{HARVEST_DIR}/harvesttools -i #{dir}/parsnp.ggr -V #{dir}/parsnp.vcf" or abort
+MASH_CUTOFF = ENV['MASH_CUTOFF']
+MASH_CLUSTER_NOT_GREEDY = ENV['MASH_CLUSTER_NOT_GREEDY']
+MAX_CLUSTER_SIZE = ENV['MAX_CLUSTER_SIZE']
+
+file HEATMAP_PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
+  system <<-SH or abort
+    module load python/2.7.6
+    module load py_packages/2.7
+    python #{REPO_DIR}/scripts/mash_clusters.py \
+        --path_to_mash #{MASH_DIR}/mash \
+        #{MASH_CLUSTER_NOT_GREEDY && "--not_greedy"} \
+        #{MASH_CUTOFF && "--max_cluster_diameter " + MASH_CUTOFF} \
+        #{MAX_CLUSTER_SIZE &&  "--max_cluster_size " + MAX_CLUSTER_SIZE} \
+        --output #{t.name.shellescape} \
+        --output_diameters #{OUT_PREFIX}.repeat_mask.msh.cluster_diameters.txt \
+        #{t.source.shellescape}
+  SH
+  
+  # If we rebuild the clusters, we enhance all the upstream tasks with the new prereqs based on the
+  # new clusters. Then, we re-invoke the final file task to ensure the new prereqs get built.
+  abort "FATAL: Could not rebuild mash clusters" unless read_parsnp_clusters
+  Rake::Task[HEATMAP_PARSNP_JSON_FILE].enhance(parsnp_json_prereqs)
+  Rake::Task[:parsnp].enhance do
+    puts "WARN: re-invoking parsnp task since the mash clusters were rebuilt"
+    Rake::Task[HEATMAP_PARSNP_JSON_FILE].reenable
+    Rake::Task[HEATMAP_PARSNP_JSON_FILE].invoke
+  end
+end
+
+def read_parsnp_clusters
+  return nil if Rake::Task[HEATMAP_PARSNP_CLUSTERS_TSV].needed?
+  CSV.read(HEATMAP_PARSNP_CLUSTERS_TSV, col_sep: "\t")
+end
+
+rule %r{^#{OUT_PREFIX}\.\d+\.clust$} => HEATMAP_PARSNP_CLUSTERS_TSV do |t|
+  mkdir_p t.name
+end
+
+rule %r{^#{OUT_PREFIX}\.\d+\.parsnp$} => proc{ |n| n.sub(%r{\.parsnp$}, '.clust') } do |t|
+  mkdir_p t.name
+end
+
+def clustered_fasta_prereqs(n)
+  [n.sub(%r{^#{OUT_PREFIX}\.\d+\.clust/}, "#{OUT_PREFIX}.repeat_mask/"), File.dirname(n)]
+end
+rule %r{^#{OUT_PREFIX}\.\d+\.clust/.+\.(fa|fasta)$} => proc{ |n| clustered_fasta_prereqs(n) } do |t|
+  cp t.sources.first, t.name
+  #FIXME: Would ordinarily love to use a symlink as below but it screws up Rake's #out_of_date? logic
+  #ln_s("../#{t.sources.first}", t.name) unless File.symlink? t.name
+end
+
+def parsnp_ggr_to_parsnp_inputs(name)
+  parsnp_out_dir = name.sub(%r{/parsnp\.ggr$}, "")
+  clust_dir = parsnp_out_dir.sub(%r{\.parsnp$}, ".clust")
+  prereqs = [clust_dir, parsnp_out_dir]
+  clust_dir_num = clust_dir.sub(%r{\.clust$}, "")[(OUT_PREFIX.size + 1)..-1].to_i
+  clusters = read_parsnp_clusters
+  abort "FATAL: Tried to calculate prereqs for parsnp before clustering" unless clusters
+  prereqs << clusters[clust_dir_num].map do |n|
+    n.sub(%r{^#{OUT_PREFIX}.repeat_mask/}, clust_dir + "/")
+  end
+  prereqs
+end
+rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
+  if ENV['GBK']
+    referenceOrGenbank = "-g #{ENV['GBK'].shellescape}"
+  else
+    referenceOrGenbank = ENV['REF'] ? "-r #{ENV['REF'].shellescape}" : "-r !"
+  end
+
+  # Run parsnp on the `clust_dir` from above
+  system <<-SH or abort
+    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} -c \
+        -o #{File.dirname(t.name)} \
+        -d #{t.sources.first}
+  SH
+end
+
+rule %r{/parsnp\.vcf$} => proc{ |n| n.sub(%r{\.vcf$}, ".ggr") } do |t|
+  system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -V #{t.name.shellescape}" or abort
 end
 
 # The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
 # See harvesttools option " -u 0/1 (update the branch values to reflect genome length)"
-file "#{OUT_PREFIX}.parsnp/parsnp.clean.nwk" => "#{OUT_PREFIX}.parsnp/parsnp.ggr" do |t|
-  dir = "#{OUT_PREFIX}.parsnp"
-  system "#{HARVEST_DIR}/harvesttools -i #{dir}/parsnp.ggr -N #{dir}/parsnp.nwk" or abort
+rule %r{/parsnp\.clean\.nwk$} => proc{ |n| n.sub(%r{\.clean\.nwk$}, ".ggr") } do |t|
+  nwk = t.name.sub(%r{\.clean\.nwk$}, ".nwk")
+  system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -N #{nwk.shellescape}" or abort
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
-    python #{REPO_DIR}/scripts/cleanup_parsnp_newick.py #{dir}/parsnp.nwk #{dir}/parsnp.clean.nwk
+    python #{REPO_DIR}/scripts/cleanup_parsnp_newick.py #{nwk.shellescape} #{t.name.shellescape}
   SH
 end
 
-PARSNP_OUT_FILES = ["#{OUT_PREFIX}.parsnp/parsnp.vcf", "#{OUT_PREFIX}.parsnp/parsnp.clean.nwk"]
-file HEATMAP_PARSNP_TSV_FILE => PARSNP_OUT_FILES do |t|
+def parsnp_tsv_to_parsnp_outputs(name)
+  [name.sub(%r{\.tsv$}, ".vcf"), name.sub(%r{\.tsv$}, ".clean.nwk")]
+end
+rule %r{/parsnp\.tsv$} => proc{ |n| parsnp_tsv_to_parsnp_outputs(n) } do |t|
+  # Converts a parsnp VCF file into a tab-separated values table of SNV distances
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
-    python #{REPO_DIR}/scripts/parsnp2table.py #{t.source} #{t.name}
+    python #{REPO_DIR}/scripts/parsnp2table.py #{t.sources.first} #{t.name}
   SH
 end
-file HEATMAP_PARSNP_JSON_FILE => HEATMAP_PARSNP_TSV_FILE do |t|
+
+def parsnp_json_prereqs
+  prereqs = [HEATMAP_PARSNP_CLUSTERS_TSV]
+  clusters = read_parsnp_clusters || []
+  (0...clusters.size).map do |i| 
+    prereqs += ["#{OUT_PREFIX}.#{i}.parsnp/parsnp.tsv", "#{OUT_PREFIX}.#{i}.parsnp/parsnp.clean.nwk"]
+  end
+  prereqs
+end
+file HEATMAP_PARSNP_JSON_FILE => parsnp_json_prereqs do |t|
   abort "FATAL: Task parsnp requires specifying IN_FOFN or IN_QUERY" unless IN_PATHS
   abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task parsnp requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
-  snv_tsv = CSV.read(t.source, col_sep: "\t")
-  tsv_key = Hash[snv_tsv.first.drop(1).zip(1..snv_tsv.size)]
+  
+  input_parsnp_tsvs = t.sources.select{ |src| src =~ %r{/parsnp\.tsv$} }
+  snv_tsvs = {}
+  which_tsv = {}
+  tsv_keys = {}
+  
+  if input_parsnp_tsvs.size == 0
+    puts "WARN: cannot build .parsnp.heatmap.json with prereqs from before clustering; will re-invoke"
+    return
+  end
+  input_parsnp_tsvs.each do |tsv|
+    tsv_data = snv_tsvs[tsv] = CSV.read(tsv, col_sep: "\t")
+    seqs = tsv_data.first.drop(1)
+    seqs.each{ |seq| which_tsv[seq] = tsv }
+    tsv_keys[tsv] = Hash[seqs.zip(1..tsv_data.size)]
+  end
 
   opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs"}
   json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
-    (node_hash.keys - tsv_key.keys).each do |name|
-      puts "WARN: Assembly #{name} isn't in the parsnp alignment; skipping"
+    (node_hash.keys - which_tsv.keys).each do |name|
+      puts "WARN: Assembly #{name} isn't in any of the parsnp alignments; skipping"
     end
     node_hash.each do |source_name, source|
       node_hash.each do |target_name, target|
         next unless source[:metadata] && target[:metadata]
-        next unless tsv_key[source_name] && tsv_key[target_name]
-        snp_distance = snv_tsv[tsv_key[source_name]][tsv_key[target_name]].to_i
+        next unless which_tsv[source_name] && which_tsv[target_name]
+        next unless which_tsv[source_name] == which_tsv[target_name]
+        tsv = which_tsv[source_name]
+        tsv_key = tsv_keys[tsv]
+        snp_distance = snv_tsvs[tsv][tsv_key[source_name]][tsv_key[target_name]].to_i
         json[:links][source[:id]][target[:id]] = snp_distance
       end
     end
-    json[:trees] = [File.read("#{OUT_PREFIX}.parsnp/parsnp.clean.nwk").strip]
+    json[:trees] = t.sources.select{ |src| src =~ %r{/parsnp\.clean\.nwk$} }.map do |nwk| 
+      File.read(nwk).strip
+    end
   end
 
   File.open(t.name, 'w') { |f| JSON.dump(json, f) }
+end
+
+
+# ==============
+# = encounters =
+# ==============
+
+ENCOUNTERS_TSV_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.encounters.tsv"
+desc "Download encounters data for the dendro-timeline part of pathogendb-viz"
+task :encounters => [:check, ENCOUNTERS_TSV_FILE]
+
+file ENCOUNTERS_TSV_FILE do |t|
+  abort "FATAL: Task encounters requires specifying IN_QUERY" unless IN_QUERY
+  
+  encounters = pdb.encounters(IN_QUERY)
+  
+  CSV.open(ENCOUNTERS_TSV_FILE, "wb", col_sep: "\t") do |tsv|
+    tsv << encounters.columns.map(&:to_s)
+    encounters.each do |row| 
+      tsv << row.values.map{ |v| v.is_a?(Time) ? v.strftime("%FT%T%:z") : v.to_s }
+    end
+  end
 end
 
 
@@ -757,8 +874,6 @@ file HEATMAP_EPI_JSON_FILE do |task|
   abort "FATAL: Task epi requires specifying IN_QUERY" unless IN_QUERY
   abort "FATAL: Task epi requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task epi requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
-  
-  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
   
   json = {generated: DateTime.now.to_s, in_query: IN_QUERY, isolates:[]}
   pdb.isolates(IN_QUERY).each do |row|

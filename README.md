@@ -44,6 +44,8 @@ Variable             | Required by                           | Default | Purpose
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
 `REF`                | `parsnp`                              | (random)| Specify a reference genome for parsnp
 `GBK`                | `parsnp`                              | (none)  | Specify a genbank file for parsnp
+`MASH_CUTOFF`        | `parsnp`                              | 0.1     | Create clusters of this maximum diameter in mash distance units before running parsnp
+`MAX_CLUSTER_SIZE`   | `parsnp`                              | 500     | Do not attempt to use parsnp on more than this number of input sequences
 `IGB_DIR`            | `heatmap`                             | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
 `PATHOGENDB_MYSQL_URI` | `heatmap`                           | (none)  | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
 
@@ -64,7 +66,11 @@ Variable             | Default | Purpose
 
 #### parsnp
 
-TODO: `rake parsnp` ... should be documented
+FIXME: `rake parsnp` ... should be documented.
+
+In brief, it produces similar output to `rake heatmap` for use with [pathogendb-viz][], but uses parsnp instead of mummer to calculate SNV distances between the sequences.
+
+In order for parsnp to complete in a reasonable amount of time and with acceptable core genome sizes (e.g., >50%), you may specify `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune a preclustering step that is done with [mash][]. Clusters up to `MASH_CUTOFF` units in diameter are created, with the size of each cluster capped at `MAX_CLUSTER_SIZE`. Parsnp will be run separately on each cluster and distances remerged into the final output.
 
 #### mugsy
 

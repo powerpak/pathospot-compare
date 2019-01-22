@@ -1,7 +1,6 @@
 import sys
 import datetime
 import os
-import _mysql
 from tqdm import tqdm
 import subprocess
 import numpy as np

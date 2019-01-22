@@ -33,4 +33,20 @@ class PathogenDBClient
     dataset
   end
   
+  def encounters(where_clause=nil)
+    erap_ids = assemblies(where_clause).select_map(:eRAP_ID).uniq
+    dataset = @db[:tPatientEncounter]
+        .select(:eRAP_ID,
+                Sequel.as(:start_date, :start_time),
+                Sequel.as(:end_date, :end_time),
+                :department_name,
+                :encounter_type,
+                :age,
+                :sex,
+                :transfer_to)
+        .where(:eRAP_ID => erap_ids)
+        .exclude(:department_name => '')
+    dataset
+  end
+  
 end
