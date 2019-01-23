@@ -6,6 +6,10 @@ As of now, this only runs on [Minerva](http://hpc.mssm.edu) because it uses modu
 
 Currently, you also need to be in the `pacbioUsers` group on Minerva and have access to the `premium` LSF queue and the `acc_PBG` LSF account.
 
+The pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7, and [MUMmer][] 3.23, all of which can be loaded using modules on Minerva.
+
+[MUMmer]: http://mummer.sourceforge.net/
+
 ## Usage
 
 First, clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
@@ -23,7 +27,7 @@ When this is complete, you should be able to run rake to kick off the pipeline a
     $ rake $TASK_NAME            # run the task named $TASK_NAME
     $ FOO="bar" rake $TASK_NAME  # run $TASK_NAME with FOO set to "bar"
 
-When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` before running `rake`.
+**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`.
 
 ### Environment variables
 
@@ -37,8 +41,8 @@ Variable             | Required by                           | Default | Purpose
 ---------------------|---------------------------------------|---------|-----------------------------------
 `OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
 `IN_FOFN`            | `mugsy` `mauve` `sv_snv`              | (none)  | A file containing filenames that will be processed as input
-`IN_QUERY`           | `heatmap`                             | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
-`OUT_PREFIX`         | `mugsy` `mugsy_plot` `mauve` `sv_snv` | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
+`IN_QUERY`           | `heatmap` `parsnp`                    | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
+`OUT_PREFIX`         | all tasks                             | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
 `SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
@@ -46,8 +50,8 @@ Variable             | Required by                           | Default | Purpose
 `GBK`                | `parsnp`                              | (none)  | Specify a genbank file for parsnp
 `MASH_CUTOFF`        | `parsnp`                              | 0.1     | Create clusters of this maximum diameter in mash distance units before running parsnp
 `MAX_CLUSTER_SIZE`   | `parsnp`                              | 500     | Do not attempt to use parsnp on more than this number of input sequences
-`IGB_DIR`            | `heatmap`                             | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
-`PATHOGENDB_MYSQL_URI` | `heatmap`                           | (none)  | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
+`IGB_DIR`            | `heatmap` `parsnp`                    | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
+`PATHOGENDB_MYSQL_URI` | `heatmap` `parsnp`                  | (none)  | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
 
 According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
 
@@ -64,13 +68,46 @@ Variable             | Default | Purpose
 
 ### Tasks
 
+#### sv_snv
+
+`rake sv_snv` attempts to create annotation tracks in [BED format] that contain the likely structural variants (insertions, deletions, and rearrangements) and single nucleotide variants (SNVs) that differentiate each pair of genomes in your `IN_FOFN`.
+
+To do this, for each pair of genomes a [Mauve] alignment is created, which is then parsed for [locally collinear blocks][lcbs] (LCBs) which are considered the "core genome" for the pair.  Blocks unique to one or the other genome ("islands" in Mauve terminology) are considered insertions and deletions, and then [GRIMM] is used to determine the minimal number of inversions, translocations, fusions and fissions that could reorder the LCBs in the first genome to produce the second.  These are all depicted as features in a BED track, using connected "exons" (fat blocks) to depict the pairs of LCBs involved in an inversion and shared color for the same in translocations, as BED features can't split over multiple contigs.
+
+Single-nucleotide variants between each pair of genomes are generated using a [MUMmer][] pairwise alignment followed by use of the [`show-snps`][show-snps] utility from the MUMmer suite.
+
+The output is created in the directory `$OUT/$OUT_PREFIX.sv_snv/`. A subdirectory is created for each genome file in `IN_FOFN`, and within these subdirectories, tracks in the form `{$GENOME1}_{$GENOME2}.sv.bed` are generated, which use `$GENOME1` as a reference and map upon it the insertions, deletions, and rearrangements that most likely occurred to produce `$GENOME2`. Similarly named tracks ending in `.snv.bed` contain the SNVs. Finally, the corresponding `.sv_snv.bed` files combine the BED features from the other two files for simple display in a genome browser.
+
+*Caveats for structural variants.* (1) Depending on the actual ancestry of each genome, of course, this may not even be close to what happened biologically; consider these annotations to be more like a [diff] between the two genomes that can provide a rough distance metric and sense of where double stranded breaks and recombination likely occurred. (2) GRIMM implements the Hannenhalli-Pevzner algorithm, which is based on inversions only. In most situations, a [DCJ model] may be more appropriate (not yet implemented here). (3) The alignment and GRIMM analysis essentially consider each contig in your input files to be a separate chromosome in a multichromosomal genome, so if you have a low quality assembly, this analysis may deviate significantly from reality. (4) Because GRIMM only allows circular genomes to be compared with other circular genomes, and only for unichromosomal genomes, we have degraded its use to its multichromosomal mode only, which will not entirely correctly interpret contigs in your genomes that you have circularized.
+
+This task requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `LCB_WEIGHT` environment variables. See [Environment variables](#environment-variables) for a description of each.
+
+`IN_FOFN` is a file containing the full paths (one per line) to FASTA files containing contigs for whole genome sequences that you intend to compare with [Mauve].
+
+[BED format]: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
+[lcbs]: http://darlinglab.org/mauve/user-guide/introduction.html
+[GRIMM]: http://grimm.ucsd.edu/GRIMM/
+[diff]: http://en.wikipedia.org/wiki/Diff_utility
+[DCJ model]: http://bioinformatics.oxfordjournals.org/content/24/13/i114.abstract
+[show-snps]: http://mummer.sourceforge.net/manual/#snps
+
+#### heatmap
+
+`rake heatmap` builds off of the SNV components of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathogendb-viz][].
+
+Note that this task requires use of `IN_QUERY` instead of the simpler `IN_FOFN` approach to selecting input genomes, because it expects metadata (date, location, MLST, etc.) to be queriable in PathogenDB for each of the genomes. This data is needed by [pathogendb-viz][] in order to draw the corresponding parts of the visualization.
+
+[pathogendb-viz]: (https://github.com/powerpak/pathogendb-viz)
+
 #### parsnp
 
 FIXME: `rake parsnp` ... should be documented.
 
-In brief, it produces similar output to `rake heatmap` for use with [pathogendb-viz][], but uses parsnp instead of mummer to calculate SNV distances between the sequences.
+In brief, it produces similar output to `rake heatmap` for use with [pathogendb-viz][], but uses parsnp instead of MUMmer to calculate SNV distances between the sequences.
 
 In order for parsnp to complete in a reasonable amount of time and with acceptable core genome sizes (e.g., >50%), you may specify `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune a preclustering step that is done with [mash][]. Clusters up to `MASH_CUTOFF` units in diameter are created, with the size of each cluster capped at `MAX_CLUSTER_SIZE`. Parsnp will be run separately on each cluster and distances remerged into the final output.
+
+[mash]: https://mash.readthedocs.io/en/latest/
 
 #### mugsy
 
@@ -100,34 +137,6 @@ Output will be found as files starting with "RAxML_" in your `OUT` directory, wi
 
 [Mauve]: http://asap.genetics.wisc.edu/software/mauve/
 
-#### sv_snv
-
-`rake sv_snv` attempts to create annotation tracks in [BED format] that contain the likely structural variants—insertions, deletions, and rearrangements—that differentiate each pair of genomes in your `IN_FOFN`.  (Soon, it will include SNVs in the output as well, hence the name of the task).
-
-To do this, for each pair of genomes a [Mauve] alignment is created, which is then parsed for [locally collinear blocks][lcbs] (LCBs) which are considered the "core genome" for the pair.  Blocks unique to one or the other genome ("islands" in Mauve terminology) are considered insertions and deletions, and then [GRIMM] is used to determine the minimal number of inversions, translocations, fusions and fissions that could reorder the LCBs in the first genome to produce the second.  These are all depicted as features in a BED track, using connected "exons" (fat blocks) to depict the pairs of LCBs involved in an inversion and shared color for the same in translocations, as BED features can't split over multiple contigs.
-
-The output is created in the directory `$OUT/$OUT_PREFIX.sv_snv/`. A subdirectory is created for each genome file in `IN_FOFN`, and within these subdirectories, tracks in the form `{$GENOME1}_{$GENOME2}.bed` are generated, which use `$GENOME1` as a reference and map upon it the insertions, deletions, and rearrangements that most likely occurred to produce `$GENOME2`.
-
-*Caveats.* (1) Depending on the actual ancestry of each genome, of course, this may not even be close to what happened biologically; consider these annotations to be more like a [diff] between the two genomes that can provide a rough distance metric and sense of where double stranded breaks and recombination likely occurred. (2) GRIMM implements the Hannenhalli-Pevzner algorithm, which is based on inversions only. In most situations, a [DCJ model] may be more appropriate (not yet implemented here). (3) The alignment and GRIMM analysis essentially consider each contig in your input files to be a separate chromosome in a multichromosomal genome, so if you have a low quality assembly, this analysis may deviate significantly from reality. (4) Because GRIMM only allows circular genomes to be compared with other circular genomes, and only for unichromosomal genomes, we have degraded its use to its multichromosomal mode only, which will not entirely correctly interpret contigs in your genomes that you have circularized.
-
-This task requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `LCB_WEIGHT` environment variables. See [Environment variables](#environment-variables) for a description of each.
-
-`IN_FOFN` is a file containing the full paths (one per line) to FASTA files containing contigs for whole genome sequences that you intend to compare with [Mauve].
-
-[BED format]: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
-[lcbs]: http://darlinglab.org/mauve/user-guide/introduction.html
-[GRIMM]: http://grimm.ucsd.edu/GRIMM/
-[diff]: http://en.wikipedia.org/wiki/Diff_utility
-[DCJ model]: http://bioinformatics.oxfordjournals.org/content/24/13/i114.abstract
-
-#### heatmap
-
-`rake heatmap` builds off of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathogendb-viz][].
-
-Note that this task is best run with `IN_QUERY` instead of the simpler `IN_FOFN` approach to selecting input genomes. This is because it expects metadata to be queriable in PathogenDB for each of the genomes. It is possible to still use `INPUT_FOFN`, but if the genomes are named differently from how they are in PathogenDB, the output will be missing information expected by [pathogendb-viz][].
-
-[pathogendb-viz]: (https://github.com/powerpak/pathogendb-viz)
-
 ### Dependency graph
 
 This Rakefile is able to build a dependency graph of its intermediate files from itself.  Use the `rake graph` task for this; it will be generated at `$OUT/pathogendb-comparison.png`.
@@ -136,4 +145,4 @@ This Rakefile is able to build a dependency graph of its intermediate files from
 
 ## Other notes
 
-This pipeline downloads and installs the appropriate versions of Mugsy, Mauve, and RAxML into `vendor/`.
+This pipeline downloads and installs the appropriate versions of Mugsy, Mauve, CLUSTAW, RAxML, GRIMM, GBlocks, mash, and HarvestTools into `vendor/`.

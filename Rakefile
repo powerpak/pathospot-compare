@@ -8,6 +8,7 @@ require_relative 'lib/lsf_client'
 require_relative 'lib/pathogendb_client'
 require_relative 'lib/filter_fasta'
 require_relative 'lib/heatmap_json'
+require_relative 'lib/parsnp_utils'
 require 'shellwords'
 require 'json'
 require 'csv'
@@ -529,6 +530,7 @@ end
 
 # This rule creates a filtered FASTA file from the original that drops any contigs flagged as "merged" or "garbage"
 rule %r{\.filt\.(fa|fasta)$} => proc{ |n| filtered_to_unfiltered(n) } do |task|
+  mkdir_p File.dirname(task.name)
   filter_fasta_by_entry_id(task.source, task.name, /_[mg]_/, :invert => true)
 end
 
@@ -660,12 +662,12 @@ HEATMAP_PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
 desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
 task :parsnp => [:check, HEATMAP_PARSNP_CLUSTERS_TSV, HEATMAP_PARSNP_JSON_FILE]
 
-directory "#{OUT_PREFIX}.repeat_mask"
 def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
-  ["#{OUT_PREFIX}.contig_filter/#{name}", "#{OUT_PREFIX}.repeat_mask"]
+  "#{OUT_PREFIX}.contig_filter/#{name}"
 end
 rule %r{^#{OUT_PREFIX}.repeat_mask/.+\.(fa|fasta)$} => proc{ |n| repeat_masked_prereqs(n) } do |t|
+  mkdir_p "#{OUT_PREFIX}.repeat_mask"
   fasta_mask_repeats(t.source, t.name)
 end
 
@@ -714,57 +716,57 @@ def read_parsnp_clusters
   CSV.read(HEATMAP_PARSNP_CLUSTERS_TSV, col_sep: "\t")
 end
 
-rule %r{^#{OUT_PREFIX}\.\d+\.clust$} => HEATMAP_PARSNP_CLUSTERS_TSV do |t|
-  mkdir_p t.name
-end
-
-rule %r{^#{OUT_PREFIX}\.\d+\.parsnp$} => proc{ |n| n.sub(%r{\.parsnp$}, '.clust') } do |t|
-  mkdir_p t.name
-end
-
 def clustered_fasta_prereqs(n)
-  [n.sub(%r{^#{OUT_PREFIX}\.\d+\.clust/}, "#{OUT_PREFIX}.repeat_mask/"), File.dirname(n)]
+  n.sub(%r{^#{OUT_PREFIX}\.\d+\.clust/}, "#{OUT_PREFIX}.repeat_mask/")
 end
 rule %r{^#{OUT_PREFIX}\.\d+\.clust/.+\.(fa|fasta)$} => proc{ |n| clustered_fasta_prereqs(n) } do |t|
-  cp t.sources.first, t.name
+  mkdir_p File.dirname(t.name)
+  cp t.source, t.name
   #FIXME: Would ordinarily love to use a symlink as below but it screws up Rake's #out_of_date? logic
   #ln_s("../#{t.sources.first}", t.name) unless File.symlink? t.name
 end
 
 def parsnp_ggr_to_parsnp_inputs(name)
-  parsnp_out_dir = name.sub(%r{/parsnp\.ggr$}, "")
-  clust_dir = parsnp_out_dir.sub(%r{\.parsnp$}, ".clust")
-  prereqs = [clust_dir, parsnp_out_dir]
-  clust_dir_num = clust_dir.sub(%r{\.clust$}, "")[(OUT_PREFIX.size + 1)..-1].to_i
+  clust_dir = File.dirname(name).sub(%r{\.parsnp$}, ".clust")
+  clust_num = clust_num_from_path(name)
   clusters = read_parsnp_clusters
   abort "FATAL: Tried to calculate prereqs for parsnp before clustering" unless clusters
-  prereqs << clusters[clust_dir_num].map do |n|
+  clusters[clust_num].map do |n|
     n.sub(%r{^#{OUT_PREFIX}.repeat_mask/}, clust_dir + "/")
   end
-  prereqs
 end
-rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
-  if ENV['GBK']
-    referenceOrGenbank = "-g #{ENV['GBK'].shellescape}"
-  else
-    referenceOrGenbank = ENV['REF'] ? "-r #{ENV['REF'].shellescape}" : "-r !"
-  end
 
+rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
+  mkdir_p File.dirname(t.name)
+  
+  # Special case: If there is only one genome in the cluster, produce an empty .ggr file
+  next touch(t.name) if t.sources.size == 1
+  
+  referenceOrGenbank = ENV['REF'] ? "-r #{ENV['REF'].shellescape}" : "-r !"
+  referenceOrGenbank = "-g #{ENV['GBK'].shellescape}" if ENV['GBK']
+  
   # Run parsnp on the `clust_dir` from above
+  # See here for a parsnp FAQ: https://harvest.readthedocs.io/en/latest/content/parsnp/faq.html
+  #   -c => curated genome directory: use *all* genomes in dir, ignore MUMi distances
   system <<-SH or abort
-    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} -c \
+    #{HARVEST_DIR}/parsnp #{referenceOrGenbank} \
+        -c \
         -o #{File.dirname(t.name)} \
-        -d #{t.sources.first}
+        -d #{File.dirname(t.sources.first)}
   SH
 end
 
 rule %r{/parsnp\.vcf$} => proc{ |n| n.sub(%r{\.vcf$}, ".ggr") } do |t|
+  # If the parsnp.ggr file is empty => this is a one-genome cluster => write a barebones .vcf
+  next write_null_parsnp_vcf(t.name, read_parsnp_clusters) if File.size(t.source) == 0
   system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -V #{t.name.shellescape}" or abort
 end
 
 # The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
 # See harvesttools option " -u 0/1 (update the branch values to reflect genome length)"
 rule %r{/parsnp\.clean\.nwk$} => proc{ |n| n.sub(%r{\.clean\.nwk$}, ".ggr") } do |t|
+  # If the parsnp.ggr file is empty => this is a one-genome cluster => write a barebones .nwk
+  next write_null_parsnp_clean_nwk(t.name, read_parsnp_clusters) if File.size(t.source) == 0
   nwk = t.name.sub(%r{\.clean\.nwk$}, ".nwk")
   system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -N #{nwk.shellescape}" or abort
   system <<-SH or abort
@@ -831,7 +833,8 @@ file HEATMAP_PARSNP_JSON_FILE => parsnp_json_prereqs do |t|
         json[:links][source[:id]][target[:id]] = snp_distance
       end
     end
-    json[:trees] = t.sources.select{ |src| src =~ %r{/parsnp\.clean\.nwk$} }.map do |nwk| 
+    newick_tree_files = t.sources.select{ |src| src =~ %r{/parsnp\.clean\.nwk$} }
+    json[:trees] = newick_tree_files.map do |nwk| 
       File.read(nwk).strip
     end
   end
