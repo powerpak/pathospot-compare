@@ -9,6 +9,7 @@ require_relative 'lib/pathogendb_client'
 require_relative 'lib/filter_fasta'
 require_relative 'lib/heatmap_json'
 require_relative 'lib/parsnp_utils'
+require 'set'
 require 'shellwords'
 require 'json'
 require 'csv'
@@ -73,7 +74,7 @@ mkdir_p OUT
 Dir.chdir(OUT)
 
 task :env do
-  puts "Output directory: #{OUT}"
+  STDERR.puts "Output directory: #{OUT}"
   mkdir_p File.join(REPO_DIR, "vendor")
   
   sc_orga_scratch = "/sc/orga/scratch/#{ENV['USER']}"
@@ -561,7 +562,7 @@ rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.c
     show-snps -IHTClr #{task.source.shellescape} > #{snps_file.shellescape}
   SH
   
-  File.open("#{snps_file}.count", 'w') { |f| f.write(`wc -l #{snps_file.shellescape}`.strip.split(' ')[0]) }
+  File.open("#{snps_file}.count", "w") { |f| f.write(`wc -l #{snps_file.shellescape}`.strip.split(' ')[0]) }
   
   system <<-SH
     #{REPO_DIR}/scripts/mummer-snps-to-bed.rb #{snps_file.shellescape} \
@@ -609,7 +610,7 @@ multifile HEATMAP_SNV_JSON_FILE => SNV_COUNT_FILES do |task|
     end
   end
  
-  File.open(task.name, 'w') { |f| JSON.dump(json, f) }
+  File.open(task.name, "w") { |f| JSON.dump(json, f) }
 end
 
 
@@ -644,7 +645,7 @@ end
 #  1. filter tandem repeats out of the genomes with mummer, as in calculate_snvs.py, and put 
 #     the filtered fastas into a "#{OUT_PREFIX}.repeat_mask" directory as 
 #     .repeat_mask.(fa|fasta) files
-#  2. cluster them, roughly, by MASH or MUMi distance, and copy/symlink them into
+#  2. cluster them, roughly, by MASH or MUMi distance, and symlink them into
 #     #{OUT_PREFIX}.0.clust, #{OUT_PREFIX}.1.clust, etc. directories
 #  3. run parsnp on each cluster, outputting into #{OUT_PREFIX}.0.parsnp, #{OUT_PREFIX}.1.parsnp etc. 
 #     directories
@@ -705,7 +706,7 @@ file HEATMAP_PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
   abort "FATAL: Could not rebuild mash clusters" unless read_parsnp_clusters
   Rake::Task[HEATMAP_PARSNP_JSON_FILE].enhance(parsnp_json_prereqs)
   Rake::Task[:parsnp].enhance do
-    puts "WARN: re-invoking parsnp task since the mash clusters were rebuilt"
+    STDERR.puts "WARN: re-invoking parsnp task since the mash clusters were rebuilt"
     Rake::Task[HEATMAP_PARSNP_JSON_FILE].reenable
     Rake::Task[HEATMAP_PARSNP_JSON_FILE].invoke
   end
@@ -721,9 +722,7 @@ def clustered_fasta_prereqs(n)
 end
 rule %r{^#{OUT_PREFIX}\.\d+\.clust/.+\.(fa|fasta)$} => proc{ |n| clustered_fasta_prereqs(n) } do |t|
   mkdir_p File.dirname(t.name)
-  cp t.source, t.name
-  #FIXME: Would ordinarily love to use a symlink as below but it screws up Rake's #out_of_date? logic
-  #ln_s("../#{t.sources.first}", t.name) unless File.symlink? t.name
+  ln_s "../#{t.source}", t.name
 end
 
 def parsnp_ggr_to_parsnp_inputs(name)
@@ -739,11 +738,17 @@ end
 rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
   mkdir_p File.dirname(t.name)
   
-  # Special case: If there is only one genome in the cluster, produce an empty .ggr file
+  # Special case: If there is only one genome in the cluster, create an empty .ggr file
   next touch(t.name) if t.sources.size == 1
   
   referenceOrGenbank = ENV['REF'] ? "-r #{ENV['REF'].shellescape}" : "-r !"
   referenceOrGenbank = "-g #{ENV['GBK'].shellescape}" if ENV['GBK']
+  
+  input_dir = File.dirname(t.sources.first)
+  if (Dir.glob("#{input_dir}/*") - t.sources).size > 0
+    STDERR.puts "WARN: Deleting extraneous files/symlinks in #{input_dir} before running parsnp"
+    rm (Dir.glob("#{input_dir}/*") - t.sources)
+  end
   
   # Run parsnp on the `clust_dir` from above
   # See here for a parsnp FAQ: https://harvest.readthedocs.io/en/latest/content/parsnp/faq.html
@@ -751,8 +756,8 @@ rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
   system <<-SH or abort
     #{HARVEST_DIR}/parsnp #{referenceOrGenbank} \
         -c \
-        -o #{File.dirname(t.name)} \
-        -d #{File.dirname(t.sources.first)}
+        -o #{File.dirname(t.name).shellescape} \
+        -d #{input_dir.shellescape}
   SH
 end
 
@@ -807,8 +812,8 @@ file HEATMAP_PARSNP_JSON_FILE => parsnp_json_prereqs do |t|
   tsv_keys = {}
   
   if input_parsnp_tsvs.size == 0
-    puts "WARN: cannot build .parsnp.heatmap.json with prereqs from before clustering; will re-invoke"
-    return
+    STDERR.puts "WARN: can't build .parsnp.heatmap.json with pre-clustering prereqs; will re-invoke"
+    next
   end
   input_parsnp_tsvs.each do |tsv|
     tsv_data = snv_tsvs[tsv] = CSV.read(tsv, col_sep: "\t")
@@ -817,10 +822,10 @@ file HEATMAP_PARSNP_JSON_FILE => parsnp_json_prereqs do |t|
     tsv_keys[tsv] = Hash[seqs.zip(1..tsv_data.size)]
   end
 
-  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs"}
+  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs", trees: [], parsnp_stats: []}
   json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
     (node_hash.keys - which_tsv.keys).each do |name|
-      puts "WARN: Assembly #{name} isn't in any of the parsnp alignments; skipping"
+      STDERR.puts "WARN: Assembly #{name} isn't in any of the parsnp alignments; skipping"
     end
     node_hash.each do |source_name, source|
       node_hash.each do |target_name, target|
@@ -833,13 +838,13 @@ file HEATMAP_PARSNP_JSON_FILE => parsnp_json_prereqs do |t|
         json[:links][source[:id]][target[:id]] = snp_distance
       end
     end
-    newick_tree_files = t.sources.select{ |src| src =~ %r{/parsnp\.clean\.nwk$} }
-    json[:trees] = newick_tree_files.map do |nwk| 
-      File.read(nwk).strip
+    t.sources.select{ |src| src =~ %r{/parsnp\.clean\.nwk$} }.each do |nwk| 
+      json[:trees] << File.read(nwk).strip
+      json[:parsnp_stats] << parsnp_statistics(nwk)
     end
   end
 
-  File.open(t.name, 'w') { |f| JSON.dump(json, f) }
+  File.open(t.name, "w") { |f| JSON.dump(json, f) }
 end
 
 
@@ -883,5 +888,5 @@ file HEATMAP_EPI_JSON_FILE do |task|
     json[:isolates] << [row[:order_date], row[:collection_unit]]
   end
  
-  File.open(task.name, 'w') { |f| JSON.dump(json, f) }
+  File.open(task.name, "w") { |f| JSON.dump(json, f) }
 end

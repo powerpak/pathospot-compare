@@ -2,6 +2,7 @@ require_relative './pathogendb_client'
 
 INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
       :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
+EXPECTED_HEATMAP_JSON_OPTS = [:distance_unit, :in_query, :out_dir]
 
 def heatmap_json(in_paths, mysql_uri, opts)
   pdb = PathogenDBClient.new(mysql_uri)
@@ -11,8 +12,12 @@ def heatmap_json(in_paths, mysql_uri, opts)
     distance_unit: opts[:distance_unit] || "nucmer SNVs",
     in_query: opts[:in_query],
     out_dir: opts[:out_dir],
+    nodes: [[:name] + INTERESTING_COLS],
     links: []
   }
+  # Any other keys in opts get merged into the very end of the json object
+  json.merge!(opts.reject{ |k, v| EXPECTED_HEATMAP_JSON_OPTS.include?(k) })
+  
   genome_names = in_paths && in_paths.map{ |path| File.basename(path).sub(/\.\w+$/, '') }
   assemblies = pdb.assemblies(:assembly_data_link => genome_names)
   node_hash = Hash[genome_names.map{ |n| [n, {}] }]
@@ -20,7 +25,6 @@ def heatmap_json(in_paths, mysql_uri, opts)
     node_hash[row[:assembly_data_link]][:metadata] = row
   end
 
-  json[:nodes] = [[:name] + INTERESTING_COLS]   # Add a header row with fieldnames
   node_hash.each do |k, v|
     node = [k]
     unless v[:metadata]

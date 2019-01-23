@@ -2,7 +2,7 @@
 # = These are helper functions for the `rake parsnp` pipeline in pathogendb-comparison =
 # ======================================================================================
 
-# Extracts the cluster number from a path in the form of #{OUT_PREFIX}.(\d+).\w+/...
+# Extracts the cluster number from a path in the form of `#{OUT_PREFIX}.(\d+).\w+/...`
 # where the digits after OUT_PREFIX are the cluster number
 def clust_num_from_path(path)
   abort "FATAL: OUT_PREFIX must be defined" unless OUT_PREFIX
@@ -10,6 +10,27 @@ def clust_num_from_path(path)
     path = File.dirname(path)
   end
   path.sub(%r{\.\w+$}, "")[(OUT_PREFIX.size + 1)..-1].to_i
+end
+
+# Takes a path to a parsnp output, finds the corresponding `parsnpAligner.log`, and returns
+# a hash of stats parsed out of log, including core genome size, cluster coverage range, etc.
+def parsnp_statistics(path)
+  path = File.dirname(path) + "/parsnpAligner.log"
+  stats = {}
+  coverages = []
+  return nil unless File.exist?(path) and File.readable?(path)
+  File.foreach(path, "\n") do |line|
+    case line.strip
+    when /^Cluster coverage in sequence \d+:\s+(\d+(.\d+)?)%$/
+      coverages << $1.to_f
+    when /^Total coverage among all sequences:\s+(\d+(.\d+)?)%$/
+      stats[:core_genome_size] = $1.to_f
+    when /^Total running time:\s+(\d+(.\d+)?)s$/
+      stats[:walltime] = $1.to_f
+    end
+  end
+  stats[:cluster_coverage_range] = [coverages.min, coverages.max]
+  stats
 end
 
 # Given a filename for a hypothetical parsnp output and some mash clusters produced by 
