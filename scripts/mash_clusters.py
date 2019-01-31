@@ -1,7 +1,9 @@
 #!/usr/bin/env python
-"""Clusters the sequences in a mash sketch file until the clusters reach a given diameter (in mash distance units) or size.
+"""
+Clusters the sequences in a mash sketch file until the clusters reach a given diameter (in mash distance units) or size.
 
-Outputs clusters as sequence names separated by tabs, with each cluster separated by newlines."""
+Outputs clusters as sequence names separated by tabs, with each cluster separated by newlines.
+"""
 
 import sys
 import os
@@ -168,15 +170,15 @@ if __name__ == "__main__":
             help='Path to the .msh file (created with `mash sketch`).')
     parser.add_argument("-o", "--output", default=None, 
             help="Output clusters to this file if set, otherwise will use STDOUT.")
-    parser.add_argument("-D", "--output_diameters", default=None,
+    parser.add_argument("-d", "--output_diameters", default=None,
             help="Outputs cluster diameters to this file if set, otherwise will be discarded.")
-    parser.add_argument("-m", "--path_to_mash", default='mash',
+    parser.add_argument("-p", "--path_to_mash", default='mash',
             help="Path   to the mash executable")
-    parser.add_argument("-G", "--not_greedy", default=False, action='store_true', 
+    parser.add_argument("-G", "--not_greedy", dest='greedy', default=True, action='store_false', 
             help="Don't add to smaller clusters after one cluster reaches the size/diameter limit")
-    parser.add_argument("-C", "--dont_cache_edges", default=False, action='store_true', 
+    parser.add_argument("-C", "--no_edges_cache", dest='edges_cache', default=True, action='store_false', 
             help="Don't cache or reuse any mash distances & edges saved in a .distances_edges file")
-    parser.add_argument("-d", "--max_cluster_diameter", type=float, default=DEFAULT_MAX_DIAMETER, 
+    parser.add_argument("-m", "--max_cluster_diameter", type=float, default=DEFAULT_MAX_DIAMETER, 
             help="Maximum diameter of a cluster in mash distance units. For no limit, set to 0.")
     parser.add_argument("-s", "--max_cluster_size", type=int, default=DEFAULT_MAX_CLUSTER_SIZE, 
             help="Maximum number of genomes to include in a cluster. For no limit, set to 0.")
@@ -196,11 +198,11 @@ if __name__ == "__main__":
     
     distances, edges = mash_distances_edges(args.mash_sketch_file, fasta_list, 
             max_diameter=args.max_cluster_diameter, path_to_mash=args.path_to_mash, 
-            allow_caching=True)
+            allow_caching=args.edges_cache)
     
     clusters = mash_clusters(args.mash_sketch_file, fasta_list, distances, edges, 
             max_diameter=args.max_cluster_diameter, max_cluster_size=args.max_cluster_size, 
-            path_to_mash=args.path_to_mash, greedy=not args.not_greedy)
+            path_to_mash=args.path_to_mash, greedy=args.greedy)
     
     write_clusters(clusters, args.output)
     

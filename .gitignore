@@ -1,4 +1,6 @@
 .bundle
+*/*/*.pyc
+**/*.pyc
 out
 vendor/
 scripts/env.sh

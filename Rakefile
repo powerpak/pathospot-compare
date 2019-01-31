@@ -3,6 +3,7 @@ require 'bundler/setup'
 require 'rake-multifile'
 require 'pp'
 require 'net/http'
+require 'tmpdir'
 require_relative 'lib/colors'
 require_relative 'lib/lsf_client'
 require_relative 'lib/pathogendb_client'
@@ -658,10 +659,12 @@ end
 #     or infinitely large), and also includes the .clean.nwk trees
 #     TODO: how to best get the VCF allele information into the JSON file? 
 
-HEATMAP_PARSNP_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json"
-HEATMAP_PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
+PARSNP_HEATMAP_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json"
+PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
+PARSNP_VCFS_NPZ_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.vcfs.npz"
+
 desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
-task :parsnp => [:check, HEATMAP_PARSNP_CLUSTERS_TSV, HEATMAP_PARSNP_JSON_FILE]
+task :parsnp => [:check, PARSNP_CLUSTERS_TSV, PARSNP_HEATMAP_JSON_FILE]
 
 def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
@@ -687,7 +690,7 @@ MASH_CUTOFF = ENV['MASH_CUTOFF']
 MASH_CLUSTER_NOT_GREEDY = ENV['MASH_CLUSTER_NOT_GREEDY']
 MAX_CLUSTER_SIZE = ENV['MAX_CLUSTER_SIZE']
 
-file HEATMAP_PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
+file PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
@@ -704,17 +707,17 @@ file HEATMAP_PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
   # If we rebuild the clusters, we enhance all the upstream tasks with the new prereqs based on the
   # new clusters. Then, we re-invoke the final file task to ensure the new prereqs get built.
   abort "FATAL: Could not rebuild mash clusters" unless read_parsnp_clusters
-  Rake::Task[HEATMAP_PARSNP_JSON_FILE].enhance(parsnp_json_prereqs)
+  Rake::Task[PARSNP_HEATMAP_JSON_FILE].enhance(parsnp_heatmap_json_prereqs)
   Rake::Task[:parsnp].enhance do
     STDERR.puts "WARN: re-invoking parsnp task since the mash clusters were rebuilt"
-    Rake::Task[HEATMAP_PARSNP_JSON_FILE].reenable
-    Rake::Task[HEATMAP_PARSNP_JSON_FILE].invoke
+    Rake::Task[PARSNP_HEATMAP_JSON_FILE].reenable
+    Rake::Task[PARSNP_HEATMAP_JSON_FILE].invoke
   end
 end
 
 def read_parsnp_clusters
-  return nil if Rake::Task[HEATMAP_PARSNP_CLUSTERS_TSV].needed?
-  CSV.read(HEATMAP_PARSNP_CLUSTERS_TSV, col_sep: "\t")
+  return nil if Rake::Task[PARSNP_CLUSTERS_TSV].needed?
+  CSV.read(PARSNP_CLUSTERS_TSV, col_sep: "\t")
 end
 
 def clustered_fasta_prereqs(n)
@@ -722,6 +725,9 @@ def clustered_fasta_prereqs(n)
 end
 rule %r{^#{OUT_PREFIX}\.\d+\.clust/.+\.(fa|fasta)$} => proc{ |n| clustered_fasta_prereqs(n) } do |t|
   mkdir_p File.dirname(t.name)
+  # We touch the source because if this link is being created for the first time, any old downstream
+  # products should be rebuilt. Symlinks always show the same mtime as their source.
+  touch t.source
   ln_s "../#{t.source}", t.name
 end
 
@@ -793,16 +799,38 @@ rule %r{/parsnp\.tsv$} => proc{ |n| parsnp_tsv_to_parsnp_outputs(n) } do |t|
   SH
 end
 
-def parsnp_json_prereqs
-  prereqs = [HEATMAP_PARSNP_CLUSTERS_TSV]
+def parsnp_vcfs_npz_prereqs
+  prereqs = [PARSNP_CLUSTERS_TSV]
+  clusters = read_parsnp_clusters || []
+  (0...clusters.size).map { |i| prereqs << "#{OUT_PREFIX}.#{i}.parsnp/parsnp.vcf" }
+  prereqs
+end
+file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
+  input_parsnp_vcfs = t.sources.select{ |src| src =~ %r{/parsnp\.vcf$} }
+  Dir.mktmpdir do |tmp|
+    open("#{tmp}/in_paths.txt", "w") { |f| f.write(IN_PATHS.join("\n")) }
+    # NOTE: Because of NumPy <-> python 2.7.x bugs, this script uniquely requires python 2.7.14 !!!
+    system <<-SH or abort
+      module load python/2.7.14
+      module load py_packages/2.7
+      python #{REPO_DIR}/scripts/parsnp_vcfs_to_npz.py \
+          #{input_parsnp_vcfs.map(&:shellescape).join(' ')} \
+          --fastas #{tmp}/in_paths.txt \
+          --output #{t.name}
+    SH
+  end
+end
+
+def parsnp_heatmap_json_prereqs
+  prereqs = [PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE]
   clusters = read_parsnp_clusters || []
   (0...clusters.size).map do |i| 
     prereqs += ["#{OUT_PREFIX}.#{i}.parsnp/parsnp.tsv", "#{OUT_PREFIX}.#{i}.parsnp/parsnp.clean.nwk"]
   end
   prereqs
 end
-file HEATMAP_PARSNP_JSON_FILE => parsnp_json_prereqs do |t|
-  abort "FATAL: Task parsnp requires specifying IN_FOFN or IN_QUERY" unless IN_PATHS
+file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
+  abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
   abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task parsnp requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
   
