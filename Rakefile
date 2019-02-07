@@ -807,6 +807,11 @@ def parsnp_vcfs_npz_prereqs
 end
 file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
   input_parsnp_vcfs = t.sources.select{ |src| src =~ %r{/parsnp\.vcf$} }
+  if input_parsnp_vcfs.size == 0
+    STDERR.puts "WARN: can't build .parsnp.vcfs.npz with prereqs from before clustering; will re-invoke"
+    next
+  end
+
   Dir.mktmpdir do |tmp|
     open("#{tmp}/in_paths.txt", "w") { |f| f.write(IN_PATHS.join("\n")) }
     # NOTE: Because of NumPy <-> python 2.7.x bugs, this script uniquely requires python 2.7.14 !!!
@@ -840,7 +845,7 @@ file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
   tsv_keys = {}
   
   if input_parsnp_tsvs.size == 0
-    STDERR.puts "WARN: can't build .parsnp.heatmap.json with pre-clustering prereqs; will re-invoke"
+    STDERR.puts "WARN: can't build .parsnp.heatmap.json with prereqs from before preclustering; will re-invoke"
     next
   end
   input_parsnp_tsvs.each do |tsv|
