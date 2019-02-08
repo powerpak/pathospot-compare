@@ -654,17 +654,18 @@ end
 #     clean the sequence names in the .nwk producing a .clean.nwk tree file
 #  5. in each of the #{OUT_PREFIX}.*.parsnp directories, create a parsnp.tsv file of SNV distances from 
 #     the .vcf
-#  6. create a "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json" that
+#  6. create a "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.vcfs.npz" that combines all of the
+#     VCFs into quickly-indexable NumPy arrays, along with allele info and reference genome contig sizes
+#  7. create a "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json" that
 #     recombines all the TSVs of distances into one big matrix (uncalculated distances are marked as nil
 #     or infinitely large), and also includes the .clean.nwk trees
-#     TODO: how to best get the VCF allele information into the JSON file? 
 
 PARSNP_HEATMAP_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.heatmap.json"
 PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
 PARSNP_VCFS_NPZ_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.vcfs.npz"
 
 desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
-task :parsnp => [:check, PARSNP_CLUSTERS_TSV, PARSNP_HEATMAP_JSON_FILE]
+task :parsnp => [:check, PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE, PARSNP_HEATMAP_JSON_FILE]
 
 def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
@@ -707,9 +708,12 @@ file PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
   # If we rebuild the clusters, we enhance all the upstream tasks with the new prereqs based on the
   # new clusters. Then, we re-invoke the final file task to ensure the new prereqs get built.
   abort "FATAL: Could not rebuild mash clusters" unless read_parsnp_clusters
+  Rake::Task[PARSNP_VCFS_NPZ_FILE].enhance(parsnp_vcfs_npz_prereqs)
   Rake::Task[PARSNP_HEATMAP_JSON_FILE].enhance(parsnp_heatmap_json_prereqs)
   Rake::Task[:parsnp].enhance do
     STDERR.puts "WARN: re-invoking parsnp task since the mash clusters were rebuilt"
+    Rake::Task[PARSNP_VCFS_NPZ_FILE].reenable
+    Rake::Task[PARSNP_VCFS_NPZ_FILE].invoke
     Rake::Task[PARSNP_HEATMAP_JSON_FILE].reenable
     Rake::Task[PARSNP_HEATMAP_JSON_FILE].invoke
   end
@@ -827,7 +831,7 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
 end
 
 def parsnp_heatmap_json_prereqs
-  prereqs = [PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE]
+  prereqs = [PARSNP_CLUSTERS_TSV]
   clusters = read_parsnp_clusters || []
   (0...clusters.size).map do |i| 
     prereqs += ["#{OUT_PREFIX}.#{i}.parsnp/parsnp.tsv", "#{OUT_PREFIX}.#{i}.parsnp/parsnp.clean.nwk"]
