@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Clusters the sequences in a mash sketch file until the clusters reach a given diameter (in mash distance units) or size.
+Clusters the sequences in a Mash sketch file until the clusters reach a given diameter (in Mash distance units) or size.
 
 Outputs clusters as sequence names separated by tabs, with each cluster separated by newlines.
 """
@@ -14,8 +14,8 @@ from itertools import permutations, chain
 from tqdm import tqdm
 
 
-DEFAULT_MAX_DIAMETER = 0.1
-DEFAULT_MAX_CLUSTER_SIZE = 500
+DEFAULT_MAX_DIAMETER = 0.02
+DEFAULT_MAX_CLUSTER_SIZE = 100
 SUBPROCESS_KWARGS = {"shell": False, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
 
 
@@ -68,7 +68,7 @@ def diameter(cluster, distances, merging_into=None, diameter_cache=None):
 
 def mash_distances_edges(mash_sketch_file, fasta_list, max_diameter=DEFAULT_MAX_DIAMETER, 
         path_to_mash='mash', allow_caching=True):
-    """Calculates sketched mash distances between all fastas in `fasta_list`.
+    """Calculates sketched Mash distances between all fastas in `fasta_list`.
     
     Returns a hash of all distances indexed by (from, to) tuples, and a list of the edges
     that are below `max_diameter`, consisting of (from, to, dist) tuples and sorted from 
@@ -79,11 +79,11 @@ def mash_distances_edges(mash_sketch_file, fasta_list, max_diameter=DEFAULT_MAX_
     
     if (os.access(cached_path, os.R_OK) and os.access(mash_sketch_file, os.R_OK) and
             os.path.getmtime(cached_path) > os.path.getmtime(mash_sketch_file) and allow_caching):
-        sys.stderr.write("Loading cached mash distances & edges from %s\n" % cached_path)
+        sys.stderr.write("Loading cached Mash distances & edges from %s\n" % cached_path)
         with open(cached_path, 'rb') as f:
             return pickle.load(f)
 
-    for fasta in tqdm(fasta_list, desc="Calculating mash distance matrix"):
+    for fasta in tqdm(fasta_list, desc="Calculating Mash distance matrix"):
         if not os.path.isfile(fasta) or not os.access(fasta, os.R_OK):
             raise RuntimeError("File {} doesn't exist or isn't readable".format(fasta))
         process = subprocess.Popen([path_to_mash, 'dist', mash_sketch_file, fasta], 
@@ -173,15 +173,17 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--output_diameters", default=None,
             help="Outputs cluster diameters to this file if set, otherwise will be discarded.")
     parser.add_argument("-p", "--path_to_mash", default='mash',
-            help="Path   to the mash executable")
+            help="Path to the mash executable")
     parser.add_argument("-G", "--not_greedy", dest='greedy', default=True, action='store_false', 
             help="Don't add to smaller clusters after one cluster reaches the size/diameter limit")
     parser.add_argument("-C", "--no_edges_cache", dest='edges_cache', default=True, action='store_false', 
-            help="Don't cache or reuse any mash distances & edges saved in a .distances_edges file")
+            help="Don't cache or reuse any Mash distances & edges, saved in a .distances_edges file")
     parser.add_argument("-m", "--max_cluster_diameter", type=float, default=DEFAULT_MAX_DIAMETER, 
-            help="Maximum diameter of a cluster in mash distance units. For no limit, set to 0.")
+            help="Maximum diameter of a cluster in Mash units. For no limit, set to 0. " + 
+                 ("Default is: %f" % DEFAULT_MAX_DIAMETER))
     parser.add_argument("-s", "--max_cluster_size", type=int, default=DEFAULT_MAX_CLUSTER_SIZE, 
-            help="Maximum number of genomes to include in a cluster. For no limit, set to 0.")
+            help="Maximum number of genomes to include in a cluster. For no limit, set to 0. " +
+                 ("Default is: %d" % DEFAULT_MAX_CLUSTER_SIZE))
     args = parser.parse_args()
     
     if args.mash_sketch_file is None:
@@ -189,7 +191,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     if not os.access(args.path_to_mash, os.X_OK):
-        parser.error("Unable to find mash. Please check the --path_to_mash argument.")
+        parser.error("Unable to find Mash. Please check the --path_to_mash argument.")
     
     if args.max_cluster_diameter == 0: args.max_cluster_diameter = float("inf")
     if args.max_cluster_size == 0: args.max_cluster_size = float("inf")
