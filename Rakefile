@@ -37,13 +37,14 @@ IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
 PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
-PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:host@pass/ # ignore the example value
+PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:pass@host/ # ignore the example value
+PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
 IGB_DIR = ENV['IGB_DIR']
 
 if IN_QUERY
   abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
   abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
-  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI)
+  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI, adapter: PATHOGENDB_ADAPTER)
   IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
 else
   begin
@@ -599,7 +600,7 @@ multifile HEATMAP_SNV_JSON_FILE => SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
   
-  opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY}
+  opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY, adapter: PATHOGENDB_ADAPTER}
   json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
     SNV_COUNT_FILES.tqdm.each do |count_file|
       snp_distance = File.read(count_file).strip.to_i
@@ -783,11 +784,16 @@ rule %r{/parsnp\.clean\.nwk$} => proc{ |n| n.sub(%r{\.clean\.nwk$}, ".ggr") } do
   # If the parsnp.ggr file is empty => this is a one-genome cluster => write a barebones .nwk
   next write_null_parsnp_clean_nwk(t.name, read_parsnp_clusters) if File.size(t.source) == 0
   nwk = t.name.sub(%r{\.clean\.nwk$}, ".nwk")
-  system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -N #{nwk.shellescape}" or abort
+  unless File.exist?(nwk)
+    system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -N #{nwk.shellescape}" or abort
+  end
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
-    python #{REPO_DIR}/scripts/cleanup_parsnp_newick.py #{nwk.shellescape} #{t.name.shellescape}
+    python #{REPO_DIR}/scripts/cleanup_parsnp_newick.py \
+      #{nwk.shellescape} \
+      #{t.name.shellescape} \
+      #{pdb.clean_genome_name_regex && pdb.clean_genome_name_regex.shellescape}
   SH
 end
 
@@ -799,7 +805,10 @@ rule %r{/parsnp\.tsv$} => proc{ |n| parsnp_tsv_to_parsnp_outputs(n) } do |t|
   system <<-SH or abort
     module load python/2.7.6
     module load py_packages/2.7
-    python #{REPO_DIR}/scripts/parsnp2table.py #{t.sources.first} #{t.name}
+    python #{REPO_DIR}/scripts/parsnp2table.py \
+      #{t.sources.first.shellescape} \
+      #{t.name.shellescape} \
+      #{pdb.clean_genome_name_regex && pdb.clean_genome_name_regex.shellescape}
   SH
 end
 
@@ -818,6 +827,7 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
 
   Dir.mktmpdir do |tmp|
     open("#{tmp}/in_paths.txt", "w") { |f| f.write(IN_PATHS.join("\n")) }
+    clean_name_regex = pdb.clean_genome_name_regex && pdb.clean_genome_name_regex.shellescape
     # NOTE: Because of NumPy <-> python 2.7.x bugs, this script uniquely requires python 2.7.14 !!!
     system <<-SH or abort
       module load python/2.7.14
@@ -825,6 +835,7 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
       python #{REPO_DIR}/scripts/parsnp_vcfs_to_npz.py \
           #{input_parsnp_vcfs.map(&:shellescape).join(' ')} \
           --fastas #{tmp}/in_paths.txt \
+          #{clean_name_regex ? "--clean_genome_names " + clean_name_regex : ''} \
           --output #{t.name}
     SH
   end
@@ -859,7 +870,8 @@ file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
     tsv_keys[tsv] = Hash[seqs.zip(1..tsv_data.size)]
   end
 
-  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs", trees: [], parsnp_stats: []}
+  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs", trees: [], parsnp_stats: [], 
+          adapter: PATHOGENDB_ADAPTER}
   json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
     (node_hash.keys - which_tsv.keys).each do |name|
       STDERR.puts "WARN: Assembly #{name} isn't in any of the parsnp alignments; skipping"

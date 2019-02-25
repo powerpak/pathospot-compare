@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 """
 parsnp2table.py
-Creates a .tsv of SNV differences between strains from a VCF file produced by parsnp
+Creates a .tsv of SNV differences between genomes from a VCF file produced by parsnp
+If [regex] is given, will also delete all [regex] matches from genome names
 
-USAGE: python parsnp2table.py parsnp.vcf output.tsv
+USAGE: python parsnp2table.py parsnp.vcf output.tsv [regex]
 """
 
 import sys
@@ -24,6 +25,9 @@ if len(sys.argv) < 3:
     sys.exit(1)
 
 seq_list, vcf_mat, _ = load_parsnp_vcf(sys.argv[1], progress=True)
+clean_seq_list = seq_list
+if len(sys.argv) >= 4:
+    clean_seq_list = map(lambda seq: re.sub(sys.argv[3], '', seq), seq_list)
 
 # Create the distance matrix. `np.count_nonzero` quickly counts nonzero elements in an np.array
 dist_mat = np.zeros((len(seq_list), len(seq_list)))
@@ -33,8 +37,8 @@ for i, seq1 in tqdm(enumerate(seq_list), total=len(seq_list), desc="Calculating 
 
 # Open the output TSV file and dump the distance 
 with open(sys.argv[2], 'w') as out:
-    out.write('strains\t' + '\t'.join(seq_list) + '\n')
-    for i, seq1 in enumerate(seq_list):
+    out.write('strains\t' + '\t'.join(clean_seq_list) + '\n')
+    for i, seq1 in enumerate(clean_seq_list):
         out.write(seq1 + '\t')
         out.write('\t'.join(map(str, dist_mat[i, :])))
         out.write('\n')

@@ -1,11 +1,11 @@
 require_relative './pathogendb_client'
 
-INTERESTING_COLS = [:eRAP_ID, :mlst_subtype, :assembly_ID, :isolate_ID, :procedure_desc, :order_date, 
+INTERESTING_COLS = [:assembly_ID, :eRAP_ID, :mlst_subtype, :isolate_ID, :procedure_desc, :order_date, 
       :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
 EXPECTED_HEATMAP_JSON_OPTS = [:distance_unit, :in_query, :out_dir]
 
 def heatmap_json(in_paths, mysql_uri, opts)
-  pdb = PathogenDBClient.new(mysql_uri)
+  pdb = PathogenDBClient.new(mysql_uri, opts)
   
   json = {
     generated: DateTime.now.to_s,
@@ -18,11 +18,11 @@ def heatmap_json(in_paths, mysql_uri, opts)
   # Any other keys in opts get merged into the very end of the json object
   json.merge!(opts.reject{ |k, v| EXPECTED_HEATMAP_JSON_OPTS.include?(k) })
   
-  genome_names = in_paths && in_paths.map{ |path| File.basename(path).sub(/\.\w+$/, '') }
-  assemblies = pdb.assemblies(:assembly_data_link => genome_names)
+  genome_names = in_paths && in_paths.map{ |path| pdb.path_to_genome_name(path) }
+  assemblies = pdb.assemblies(genome_names)
   node_hash = Hash[genome_names.map{ |n| [n, {}] }]
   assemblies.each do |row|
-    node_hash[row[:assembly_data_link]][:metadata] = row
+    node_hash[row[pdb.assembly_id_field].to_s][:metadata] = row
   end
 
   node_hash.each do |k, v|

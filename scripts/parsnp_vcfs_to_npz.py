@@ -25,7 +25,7 @@ import argparse
 from pylib.parsnp_vcf import load_parsnp_vcf, enhance_allele_info, fasta_chrom_sizes
 
 
-def read_vcfs(parsnp_vcfs, in_paths=None, quiet=False):
+def read_vcfs(parsnp_vcfs, in_paths=None, quiet=False, clean_names=None):
     vcf_data = {}
     opts = {"progress": not quiet}
     
@@ -34,7 +34,10 @@ def read_vcfs(parsnp_vcfs, in_paths=None, quiet=False):
     
     for i, vcf_file in enumerate(parsnp_vcfs):
         seq_list, vcf_mat, vcf_allele_info = load_parsnp_vcf(vcf_file, **opts)
-        vcf_data['seq_list_%d' % i] = np.array(seq_list)
+        clean_seq_list = seq_list
+        if clean_names is not None and len(clean_names) > 0:
+            clean_seq_list = map(lambda seq: re.sub(clean_names, '', seq), seq_list)
+        vcf_data['seq_list_%d' % i] = np.array(clean_seq_list)
         vcf_data['vcf_mat_%d' % i] = vcf_mat
         if in_paths is not None:
             ref_seq = seq_list[0]
@@ -69,6 +72,8 @@ if __name__ == "__main__":
             help="A file-of-filenames listing paths to the original fasta files for these " +
             "genomes. If given, they and corresponding .bed files (with the same name) will be " +
             "consulted to annotate the VCF alleles with gene names and predicted AA variants.")
+    parser.add_argument("-c", "--clean_genome_names", default=None, 
+            help="A python regex, that if given, will be scrubbed out of genome names in the .vcf.")
     parser.add_argument("-q", "--quiet", default=False, action='store_true',
             help="Don't show progress bars while processing files.")
     args = parser.parse_args()
@@ -82,7 +87,7 @@ if __name__ == "__main__":
         with open(args.fastas, "r") as f:
             in_paths = map(lambda line: line.strip(), f.readlines())
     
-    vcf_data = read_vcfs(args.parsnp_vcfs, in_paths, args.quiet)
+    vcf_data = read_vcfs(args.parsnp_vcfs, in_paths, args.quiet, args.clean_genome_names)
     
     try:
         write_npz(args.output, vcf_data)
