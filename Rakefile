@@ -828,6 +828,8 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
   Dir.mktmpdir do |tmp|
     open("#{tmp}/in_paths.txt", "w") { |f| f.write(IN_PATHS.join("\n")) }
     clean_name_regex = pdb.clean_genome_name_regex && pdb.clean_genome_name_regex.shellescape
+    sequin_annots = pdb.genome_annotation_format == ".features_table.txt"
+    transl_table = pdb.genetic_code_table && pdb.genetic_code_table.to_s.shellescape
     # NOTE: Because of NumPy <-> python 2.7.x bugs, this script uniquely requires python 2.7.14 !!!
     system <<-SH or abort
       module load python/2.7.14
@@ -835,8 +837,10 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
       python #{REPO_DIR}/scripts/parsnp_vcfs_to_npz.py \
           #{input_parsnp_vcfs.map(&:shellescape).join(' ')} \
           --fastas #{tmp}/in_paths.txt \
-          #{clean_name_regex ? "--clean_genome_names " + clean_name_regex : ''} \
-          --output #{t.name}
+          #{clean_name_regex ? "--clean_genome_names " + clean_name_regex : ""} \
+          #{sequin_annots ? "--sequin_annotations" : ""} \
+          #{transl_table ? "--transl_table " + transl_table : ""} \
+          --output #{t.name.shellescape}
     SH
   end
 end

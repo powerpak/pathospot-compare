@@ -6,7 +6,7 @@ module PathogenDBAdapterCEIRS
   # heatmap_json.rb.
   def assemblies(where_clause=nil)
     if where_clause.is_a? Array
-      where_clause = {assembly_id_field => where_clause}
+      where_clause = {assembly_id_field(true) => where_clause}
     end
     dataset = @db[:tCEIRS_assemblies]
         .left_join(:tCEIRS_Extracts, :Extract_ID => :Extract_ID)
@@ -14,7 +14,7 @@ module PathogenDBAdapterCEIRS
         .left_join(:tPVI_Surveillance, :specimen_ID => :Sample_Name)
         .left_join(:tIsolates, :isolate_ID => :cml_isolate_id)
         .left_join(:tHospitals, :hospital_ID => :tPVI_Surveillance__hospital_ID)
-    dataset = dataset.select(:assembly_ID)
+    dataset = dataset.select(:tCEIRS_assemblies__Extract_ID)
         .select_append(Sequel.as(
             Sequel.function(:IFNULL, :tPVI_Surveillance__eRAP_ID, :Sample_Name),
             :eRAP_ID))
@@ -29,12 +29,12 @@ module PathogenDBAdapterCEIRS
     dataset
   end
   
-  def assembly_id_field
-    :assembly_ID
+  def assembly_id_field(fully_qualified=false)
+    fully_qualified ? :tCEIRS_assemblies__Extract_ID : :Extract_ID
   end
   
   def assembly_paths(base_path, where_clause=nil)
-    names = assemblies(where_clause).select_map(assembly_id_field)
+    names = assemblies(where_clause).select_map(assembly_id_field(true))
     paths = names.map do |n|
       glob = File.expand_path("#{n}/??_#{n}_final.fa", base_path)
       Dir.glob(glob).first || glob
@@ -44,8 +44,14 @@ module PathogenDBAdapterCEIRS
     end
   end
   
-  def clean_genome_name_regex
-    '^\w{2}_|_final$'
+  def clean_genome_name_regex; '^\w{2}_|_final$'; end
+  
+  def genome_annotation_format; ".features_table.txt"; end
+  
+  def genetic_code_table; 1; end
+  
+  def pt_id_field(fully_qualified=false)
+    fully_qualified ? :tPVI_Surveillance__eRAP_ID : :eRAP_ID
   end
   
 end
