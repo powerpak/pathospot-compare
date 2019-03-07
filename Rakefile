@@ -36,8 +36,7 @@ OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
-PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
-PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:pass@host/ # ignore the example value
+PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI'] == 'user:pass@host' ? nil : ENV['PATHOGENDB_MYSQL_URI']
 PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
 IGB_DIR = ENV['IGB_DIR']
 
@@ -139,7 +138,8 @@ file "#{RAXML_DIR}/raxmlHPC" do
     SH
   end
   Dir.chdir("#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2") do
-    (system "make -f Makefile.gcc" and cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")) or abort
+    system "make -f Makefile.gcc" or abort
+    cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")
   end
   rm_rf "#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2"
 end
@@ -666,7 +666,14 @@ PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
 PARSNP_VCFS_NPZ_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.vcfs.npz"
 
 desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
-task :parsnp => [:check, PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE, PARSNP_HEATMAP_JSON_FILE]
+task :parsnp => [:check, :parsnp_check, PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE, 
+    PARSNP_HEATMAP_JSON_FILE]
+
+task :parsnp_check do
+  abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
+  abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task parsnp requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+end
 
 def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
@@ -854,10 +861,6 @@ def parsnp_heatmap_json_prereqs
   prereqs
 end
 file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
-  abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
-  abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
-  abort "FATAL: Task parsnp requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
-  
   input_parsnp_tsvs = t.sources.select{ |src| src =~ %r{/parsnp\.tsv$} }
   snv_tsvs = {}
   which_tsv = {}
