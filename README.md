@@ -2,38 +2,42 @@
 
 ## Requirements
 
-The pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Unix build toolkit, and other software that the pipeline can build and install itself. Although it is intended to run on Linux, [Vagrant][] can be used to rapidly provision a Linux virtual machine with all the requirements from any operating system.
+This bioinformatics pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build tools, and other software that the pipeline can build and install itself. [Vagrant][] can be used to rapidly setup a ready-to-use Linux virtual machine either locally or on a cloud provider (e.g., AWS).
 
 [MUMmer]: http://mummer.sourceforge.net/
 
 ### Vagrant
 
-Download and install Vagrant using any of the [official installers][vagrant]. Vagrant supports many virtual machine providers, including local virtualization like VirtualBox and cloud providers like AWS.
+Download and install Vagrant using any of the [official installers][vagrant] for Mac, Windows, or Linux. Vagrant supports both local virtualization via VirtualBox and cloud hosts (e.g., AWS).
 
 [vagrant]: https://www.vagrantup.com/downloads.html
 
 #### Vagrant + VirtualBox
 
-The easiest way to get started with Vagrant is to [install VirtualBox][virtualbox]. Once you've done that, clone this repository to a directory and `cd` into it. Then, run the following:
+The easiest way to get started is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
 
     $ vagrant up
 
-It will take a few minutes for Vagrant to download a vanilla Debian Stretch VM and configure it using `scripts/bootstrip.debian-stretch.sh`. Once it's done, to use your new VM, type
+It will take a few minutes for Vagrant to download a vanilla Debian Stretch VM and configure it. Once it's done, to use your new VM, type
 
     $ vagrant ssh
 
-and you'll be logged in and ready to run the pipeline. You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to **Usage** below. The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant suspend` and `vagrant resume; vagrant ssh` to pick up where you left off.
+You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to **Usage** below.
+
+The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant suspend` and `vagrant resume; vagrant ssh` to pick up where you left off.
 
 [virtualbox]: https://www.virtualbox.org/wiki/Downloads
 
 #### Vagrant + AWS
 
-Vagrant can also provision a machine for running this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
+Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
 
     $ vagrant plugin install vagrant-aws
     $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
 
-Then configure your AWS account on your machine using their command-line tool. It will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more details, check [this tutorial](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration).
+Then configure your AWS account on your machine using their command-line tool. It will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more information on creating an AWS account and obtaining credentials, [see this tutorial][aws].
+
+[aws]: (https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration)
 
     $ pip install awscli
     $ aws configure
@@ -45,22 +49,24 @@ You must then create an SSH keypair for EC2...
     $ sed -i -e $'/-----BEGIN/s/.*\t//' ~/.aws/default.pem
     $ sed -i -e $'/-----END/s/\t.*//' ~/.aws/default.pem
 
-and a security group, we'll call it `allow-ssh`, that allows inbound SSH traffic. Here we allow traffic from any IP address, but you can potentially narrow the range 
+...and a security group—we'll call it `allow-ssh`—that allows inbound SSH traffic. Here, we allow traffic from any IP address, but you could choose a narrower range, if you know your public IP address.
 
     $ aws ec2 create-security-group --group-name allow-ssh \
         --description "allows all inbound SSH traffic"
     $ aws ec2 authorize-security-group-ingress --group-name allow-ssh \
         --protocol tcp --port 22 --cidr 0.0.0.0/0
 
-Finally, you can boot and provision the new instance with Vagrant.
+Finally, you can boot and provision your AWS EC2 machine with Vagrant.
 
     $ vagrant up --provider=aws
 
-Vagrant will spend a few minutes running `scripts/bootstrip.debian-stretch.sh` to configure the VM. Once it's done, to use your new VM, type
+Vagrant will spend a few minutes configuring and building the VM. Once it's done, run
 
     $ vagrant ssh
 
-and you'll be logged in and ready to run the pipeline. You should see the bash prompt `admin@stretch:/vagrant$`, and may proceed to **Usage** below. The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant halt` and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+You should see the bash prompt `admin@stretch:/vagrant$`, and may proceed to **Usage** below.
+
+The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant halt` and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
 
 ### Minerva (Mount Sinai users only)
 
