@@ -2,32 +2,90 @@
 
 ## Requirements
 
-As of now, this only runs on [Minerva](http://hpc.mssm.edu) because it uses modules and software found on that cluster.  In due time, it might be made portable to other systems.
-
-Currently, you also need to be in the `pacbioUsers` group on Minerva and have access to the `premium` LSF queue and the `acc_PBG` LSF account.
-
-The pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7, and [MUMmer][] 3.23, all of which can be loaded using modules on Minerva.
+The pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Unix build toolkit, and other software that the pipeline can build and install itself. Although it is intended to run on Linux, [Vagrant][] can be used to rapidly provision a Linux virtual machine with all the requirements from any operating system.
 
 [MUMmer]: http://mummer.sourceforge.net/
 
-## Usage
+### Vagrant
 
-First, clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
+Download and install Vagrant using any of the [official installers][vagrant]. Vagrant supports many virtual machine providers, including local virtualization like VirtualBox and cloud providers like AWS.
 
-    $ cp scripts/example.env.sh scripts/env.sh  
+[vagrant]: https://www.vagrantup.com/downloads.html
+
+#### Vagrant + VirtualBox
+
+The easiest way to get started with Vagrant is to [install VirtualBox][virtualbox]. Once you've done that, clone this repository to a directory and `cd` into it. Then, run the following:
+
+    $ vagrant up
+
+It will take a few minutes for Vagrant to download a vanilla Debian Stretch VM and configure it using `scripts/bootstrip.debian-stretch.sh`. Once it's done, to use your new VM, type
+
+    $ vagrant ssh
+
+and you'll be logged in and ready to run the pipeline. You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to **Usage** below. The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant suspend` and `vagrant resume; vagrant ssh` to pick up where you left off.
+
+[virtualbox]: https://www.virtualbox.org/wiki/Downloads
+
+#### Vagrant + AWS
+
+Vagrant can also provision a machine for running this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
+
+    $ vagrant plugin install vagrant-aws
+    $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+
+Then configure your AWS account on your machine using their command-line tool. It will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more details, check [this tutorial](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration).
+
+    $ pip install awscli
+    $ aws configure
+
+You must then create an SSH keypair for EC2...
+
+    $ aws ec2 create-key-pair --key-name default > ~/.aws/default.pem
+    $ chmod 0400 ~/.aws/default.pem
+    $ sed -i -e $'/-----BEGIN/s/.*\t//' ~/.aws/default.pem
+    $ sed -i -e $'/-----END/s/\t.*//' ~/.aws/default.pem
+
+and a security group, we'll call it `allow-ssh`, that allows inbound SSH traffic. Here we allow traffic from any IP address, but you can potentially narrow the range 
+
+    $ aws ec2 create-security-group --group-name allow-ssh \
+        --description "allows all inbound SSH traffic"
+    $ aws ec2 authorize-security-group-ingress --group-name allow-ssh \
+        --protocol tcp --port 22 --cidr 0.0.0.0/0
+
+Finally, you can boot and provision the new instance with Vagrant.
+
+    $ vagrant up --provider=aws
+
+Vagrant will spend a few minutes running `scripts/bootstrip.debian-stretch.sh` to configure the VM. Once it's done, to use your new VM, type
+
+    $ vagrant ssh
+
+and you'll be logged in and ready to run the pipeline. You should see the bash prompt `admin@stretch:/vagrant$`, and may proceed to **Usage** below. The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant halt` and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+
+### Minerva (Mount Sinai users only)
+
+The pipeline can also access all required software using the module system on [Minerva](http://hpc.mssm.edu). Clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
+
+    $ cp scripts/example.MINERVA.env.sh scripts/env.sh  
 
 The defaults should work for any Minerva user.  Then, you can source the script into your shell and install required gems locally into the `vendor/bundle` directory as follows:
 
     $ source scripts/env.sh
     $ bundle install --deployment
 
-When this is complete, you should be able to run rake to kick off the pipeline as follows. However, also read **[Environment variables](#environment-variables)** below, as certain tasks require more variables to be set before being invoked.
+When this is complete, you should be able to continue with the steps below.
+
+## Usage
+
+Rake, aka [ruby make][], is used to kick off the pipeline as follows. However, also read **[Environment variables](#environment-variables)** below, as certain tasks require more variables to be set before being invoked.
 
     $ rake -T                    # list the available tasks
     $ rake $TASK_NAME            # run the task named $TASK_NAME
     $ FOO="bar" rake $TASK_NAME  # run $TASK_NAME with FOO set to "bar"
 
-**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`.
+**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`. If you are using Vagrant, this is configured to happen automatically (in `~/.profile`).
+
+[ruby make]: https://github.com/ruby/rake
 
 ### Environment variables
 
