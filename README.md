@@ -2,7 +2,7 @@
 
 ## Requirements
 
-This bioinformatics pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. Although designed for Linux, Windows and Mac users can use [Vagrant][] to build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS).
+This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. Although designed for Linux, Windows and Mac users can use [Vagrant][] to build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS).
 
 [MUMmer]: http://mummer.sourceforge.net/
 
@@ -65,7 +65,7 @@ Vagrant will spend a few minutes configuring and building the VM. Once it's done
 
     $ vagrant ssh
 
-You should see the bash prompt `admin@stretch:/vagrant$`, and may proceed to [**Usage**](#usage) below.
+You should see the bash prompt `admin@ip-...:/vagrant$`, and may proceed to [**Usage**](#usage) below.
 
 The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant halt` and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
 
@@ -112,9 +112,9 @@ Variable             | Required by                           | Default | Purpose
 `SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
 `REF`                | `parsnp`                              | (random)| Specify a reference genome for parsnp
-`GBK`                | `parsnp`                              | (none)  | Specify a genbank file for parsnp
-`MASH_CUTOFF`        | `parsnp`                              | 0.1     | Create clusters of this maximum diameter in mash distance units before running parsnp
-`MAX_CLUSTER_SIZE`   | `parsnp`                              | 500     | Do not attempt to use parsnp on more than this number of input sequences
+`GBK`                | `parsnp`                              | (none)  | Specify a reference genbank file for parsnp
+`MASH_CUTOFF`        | `parsnp`                              | 0.02    | Create clusters of this maximum diameter in mash distance units before running parsnp
+`MAX_CLUSTER_SIZE`   | `parsnp`                              | 100     | Do not attempt to use parsnp on more than this number of input sequences
 `IGB_DIR`            | `heatmap` `parsnp`                    | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
 `PATHOGENDB_MYSQL_URI` | `heatmap` `parsnp`                  | (none)  | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
 
