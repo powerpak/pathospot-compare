@@ -18,17 +18,18 @@ The easiest way to try the pipeline with Vagrant is to [install VirtualBox][virt
 
     $ vagrant up
 
-It will take a few minutes for Vagrant to download a vanilla Debian Stretch VM and configure it. Once it's done, to use your new VM, type
+It will take a few minutes for Vagrant to download a vanilla [Debian Stretch][] VM and configure it. Once it's done, to use your new VM, type
 
     $ vagrant ssh
 
-You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to **Usage** below.
+You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to [**Usage**](#usage) below.
 
 The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant suspend` and `vagrant resume; vagrant ssh` to pick up where you left off.
 
 [virtualbox]: https://www.virtualbox.org/wiki/Downloads
+[Debian Stretch]: https://www.debian.org/releases/stretch/
 
-#### Hosting on AWS
+#### Hosted on AWS
 
 Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
 
@@ -64,7 +65,7 @@ Vagrant will spend a few minutes configuring and building the VM. Once it's done
 
     $ vagrant ssh
 
-You should see the bash prompt `admin@stretch:/vagrant$`, and may proceed to **Usage** below.
+You should see the bash prompt `admin@stretch:/vagrant$`, and may proceed to [**Usage**](#usage) below.
 
 The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant halt` and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
 
