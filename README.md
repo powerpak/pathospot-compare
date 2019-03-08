@@ -2,7 +2,7 @@
 
 ## Requirements
 
-This bioinformatics pipeline requires Linux, ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. For non-Linux users, [Vagrant][] can be used to build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on a cloud provider (e.g., AWS).
+This bioinformatics pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. Although designed for Linux, Windows and Mac users can use [Vagrant][] to build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS).
 
 [MUMmer]: http://mummer.sourceforge.net/
 
