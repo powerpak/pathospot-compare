@@ -2,19 +2,19 @@
 
 ## Requirements
 
-This bioinformatics pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build tools, and other software that the pipeline can build and install itself. [Vagrant][] can be used to rapidly setup a ready-to-use Linux virtual machine either locally or on a cloud provider (e.g., AWS).
+This bioinformatics pipeline requires Linux, ruby 2.2 with rake >10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. For non-Linux users, [Vagrant][] can be used to build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on a cloud provider (e.g., AWS).
 
 [MUMmer]: http://mummer.sourceforge.net/
 
-### Vagrant
+### Using vagrant
 
 Download and install Vagrant using any of the [official installers][vagrant] for Mac, Windows, or Linux. Vagrant supports both local virtualization via VirtualBox and cloud hosts (e.g., AWS).
 
 [vagrant]: https://www.vagrantup.com/downloads.html
 
-#### Vagrant + VirtualBox
+#### Local virtual machine on VirtualBox
 
-The easiest way to get started is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
+The easiest way to try the pipeline with Vagrant is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
 
     $ vagrant up
 
@@ -28,7 +28,7 @@ The next time you want to use the pipeline in this VM, you won't need to start a
 
 [virtualbox]: https://www.virtualbox.org/wiki/Downloads
 
-#### Vagrant + AWS
+#### Hosting on AWS
 
 Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
 
