@@ -24,7 +24,7 @@ It will take a few minutes for Vagrant to download a vanilla [Debian Stretch][] 
 
 You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to [**Usage**](#usage) below.
 
-The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant suspend` and `vagrant resume; vagrant ssh` to pick up where you left off.
+The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant suspend` to save its state, and `vagrant resume; vagrant ssh` to pick up where you left off.
 
 [virtualbox]: https://www.virtualbox.org/wiki/Downloads
 [Debian Stretch]: https://www.debian.org/releases/stretch/
@@ -67,7 +67,7 @@ Vagrant will spend a few minutes configuring and building the VM. Once it's done
 
 You should see the bash prompt `admin@ip-...:/vagrant$`, and may proceed to [**Usage**](#usage) below.
 
-The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and use `vagrant halt` and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant halt` to exit, and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
 
 ### Minerva (Mount Sinai users only)
 
