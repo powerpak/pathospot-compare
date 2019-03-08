@@ -4,7 +4,7 @@
 # Optionally, provide the VM's login username as the 1st argument (default is "vagrant")
 
 # This detects the home directory for the default user (uid 1000), which is given a 
-# different name on different hosting providers (e.g. admin, vagrant)
+# different name on different vagrant providers (e.g. admin, vagrant)
 DEFAULT_UID="1000"
 DEFAULT_HOME="$(getent passwd $DEFAULT_UID | cut -d: -f6)"
 
@@ -40,9 +40,8 @@ pip install -r requirements.txt
 sudo -u \#$DEFAULT_UID rake check
 
 # Modify the default user's ~/.profile to save a few steps upon `vagrant ssh`ing
-if [ ! -f scripts/env.sh ]; then
-  sudo -u \#$DEFAULT_UID cp scripts/example.env.sh scripts/env.sh
-fi
 echo >> "$DEFAULT_HOME/.profile"
 echo "cd /vagrant" >> "$DEFAULT_HOME/.profile"
-echo "source /vagrant/scripts/env.sh" >> "$DEFAULT_HOME/.profile"
+echo "if [ ! -f scripts/env.sh ]; then cp scripts/example.env.sh scripts/env.sh; fi" \
+  >> "$DEFAULT_HOME/.profile"
+echo "source scripts/env.sh" >> "$DEFAULT_HOME/.profile"

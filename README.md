@@ -82,6 +82,10 @@ The defaults should work for any Minerva user.  Then, you can source the script 
 
 When this is complete, you should be able to continue with the steps below.
 
+### Installing directly on Linux (advanced users)
+
+You may be able to install prerequisites directly on a Linux machine by editing `scripts/bootstrap.debian-stretch.sh` to fit your distro's needs. As the name suggests, it was designed for [Debian Stretch][], but will likely run with minor changes on most Debian-based distros, including Ubuntu and Mint. Note that this script must be run as root, expects the pipeline will be run by `$DEFAULT_USER` i.e. `UID=1000`, and assumes this repo is already checked out into `/vagrant`.
+
 ## Usage
 
 Rake, aka [ruby make][], is used to kick off the pipeline as follows. However, also read **[Environment variables](#environment-variables)** below, as certain tasks require more variables to be set before being invoked.

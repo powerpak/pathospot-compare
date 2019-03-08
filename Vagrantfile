@@ -2,7 +2,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "debian/stretch64"
   
   config.vm.synced_folder ".", "/vagrant", type: "rsync",
-      rsync__exclude: [".git/", "vendor/"]
+      rsync__exclude: [".git/", "vendor/", "scripts/env.sh"]
 
   config.vm.provision "shell", path: "scripts/bootstrap.debian-stretch.sh"
   
