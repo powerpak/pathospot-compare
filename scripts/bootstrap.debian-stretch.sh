@@ -12,6 +12,7 @@ apt-get update
 apt-get install -y ruby2.3 ruby2.3-dev curl build-essential 
 apt-get install -y default-libmysqlclient-dev
 apt-get install -y python-pip python-dev
+apt-get install -y graphviz
 gem install bundler
 gem install rake
 
@@ -31,7 +32,7 @@ rm -rf mummer.tar.gz MUMmer3.23
 
 # Fetch gems required by bundler
 cd /vagrant
-sudo -u \#$DEFAULT_UID bundle install
+sudo -u \#$DEFAULT_UID bundle install --deployment
 
 # Fetch all the python modules required by the python scripts
 pip install -r requirements.txt
