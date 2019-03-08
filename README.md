@@ -2,7 +2,7 @@
 
 ## Requirements
 
-This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. Although designed for Linux, Windows and Mac users can use [Vagrant][] to build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS).
+Although designed for Linux, users of other operating systems can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
 
 [MUMmer]: http://mummer.sourceforge.net/
 
@@ -14,11 +14,11 @@ Download and install Vagrant using any of the [official installers][vagrant] for
 
 #### Local virtual machine on VirtualBox
 
-The easiest way to try the pipeline with Vagrant is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
+The fastest way to get started with Vagrant is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
 
     $ vagrant up
 
-It will take a few minutes for Vagrant to download a vanilla [Debian Stretch][] VM and configure it. Once it's done, to use your new VM, type
+It will take a few minutes for Vagrant to download a vanilla [Debian 9 "Stretch"][deb] VM and configure it. Once it's done, to use your new VM, type
 
     $ vagrant ssh
 
@@ -27,7 +27,7 @@ You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to [
 The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant suspend` to save its state, and `vagrant resume; vagrant ssh` to pick up where you left off.
 
 [virtualbox]: https://www.virtualbox.org/wiki/Downloads
-[Debian Stretch]: https://www.debian.org/releases/stretch/
+[deb]: https://www.debian.org/releases/stretch/
 
 #### Hosted on AWS
 
@@ -84,7 +84,7 @@ When this is complete, you should be able to continue with the steps below.
 
 ### Installing directly on Linux (advanced users)
 
-You may be able to install prerequisites directly on a Linux machine by editing `scripts/bootstrap.debian-stretch.sh` to fit your distro's needs. As the name suggests, it was designed for [Debian Stretch][], but will likely run with minor changes on most Debian-based distros, including Ubuntu and Mint. Note that this script must be run as root, expects the pipeline will be run by `$DEFAULT_USER` i.e. `UID=1000`, and assumes this repo is already checked out into `/vagrant`.
+You may be able to install prerequisites directly on a Linux machine by editing `scripts/bootstrap.debian-stretch.sh` to fit your distro's needs. As the name suggests, it was designed for [Debian 9 "Stretch"][deb], but will likely run with minor changes on most Debian-based distros, including Ubuntu and Mint. Note that this script must be run as root, expects the pipeline will be run by `$DEFAULT_USER` i.e. `UID=1000`, and assumes this repo is already checked out into `/vagrant`.
 
 ## Usage
 
