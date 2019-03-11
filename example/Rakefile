@@ -1,0 +1,23 @@
+require 'rubygems'
+require 'bundler/setup'
+require 'shellwords'
+require_relative '../lib/pathogendb_client'
+
+task :default => []
+
+if IN_QUERY
+  abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_URI" unless PATHOGENDB_URI
+  abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
+  pdb = PathogenDBClient.new(PATHOGENDB_URI, adapter: PATHOGENDB_ADAPTER)
+  IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
+else
+  begin
+    IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
+  rescue Errno::ENOENT
+    abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
+  end
+end
+
+file "mrsa.db" do |t|
+  
+end
