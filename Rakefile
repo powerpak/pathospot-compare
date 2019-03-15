@@ -775,7 +775,10 @@ end
 rule %r{/parsnp\.vcf$} => proc{ |n| n.sub(%r{\.vcf$}, ".ggr") } do |t|
   # If the parsnp.ggr file is empty => this is a one-genome cluster => write a barebones .vcf
   next write_null_parsnp_vcf(t.name, read_parsnp_clusters) if File.size(t.source) == 0
-  system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -V #{t.name.shellescape}" or abort
+  system <<-SH or abort
+    #{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -V parsnp.complete.vcf
+    awk -F '\t' '$7=="PASS" || $1~/^#/' parsnp.complete.vcf > #{t.name.shellescape}
+  SH
 end
 
 # The .nwk tree is different from the .tree in that it uses distances scaled to SNVs/Mbp
