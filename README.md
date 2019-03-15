@@ -2,32 +2,101 @@
 
 ## Requirements
 
-As of now, this only runs on [Minerva](http://hpc.mssm.edu) because it uses modules and software found on that cluster.  In due time, it might be made portable to other systems.
-
-Currently, you also need to be in the `pacbioUsers` group on Minerva and have access to the `premium` LSF queue and the `acc_PBG` LSF account.
-
-The pipeline requires ruby 2.2 with rake >10.5 and bundler, python 2.7, and [MUMmer][] 3.23, all of which can be loaded using modules on Minerva.
+Although designed for Linux, users of other operating systems can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
 
 [MUMmer]: http://mummer.sourceforge.net/
 
-## Usage
+### Using vagrant
 
-First, clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
+Download and install Vagrant using any of the [official installers][vagrant] for Mac, Windows, or Linux. Vagrant supports both local virtualization via VirtualBox and cloud hosts (e.g., AWS).
 
-    $ cp scripts/example.env.sh scripts/env.sh  
+[vagrant]: https://www.vagrantup.com/downloads.html
+
+#### Local virtual machine on VirtualBox
+
+The fastest way to get started with Vagrant is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
+
+    $ vagrant up
+
+It will take a few minutes for Vagrant to download a vanilla [Debian 9 "Stretch"][deb] VM and configure it. Once it's done, to use your new VM, type
+
+    $ vagrant ssh
+
+You should see the bash prompt `vagrant@stretch:/vagrant$`, and may proceed to [**Usage**](#usage) below.
+
+The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant suspend` to save its state, and `vagrant resume; vagrant ssh` to pick up where you left off.
+
+[virtualbox]: https://www.virtualbox.org/wiki/Downloads
+[deb]: https://www.debian.org/releases/stretch/
+
+#### Hosted on AWS
+
+Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
+
+    $ vagrant plugin install vagrant-aws
+    $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+
+Then configure your AWS account on your machine using their command-line tool. It will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more information on creating an AWS account and obtaining credentials, [see this tutorial][aws].
+
+[aws]: (https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration)
+
+    $ pip install awscli
+    $ aws configure
+
+You must then create an SSH keypair for EC2...
+
+    $ aws ec2 create-key-pair --key-name default > ~/.aws/default.pem
+    $ chmod 0400 ~/.aws/default.pem
+    $ sed -i -e $'/-----BEGIN/s/.*\t//' ~/.aws/default.pem
+    $ sed -i -e $'/-----END/s/\t.*//' ~/.aws/default.pem
+
+...and a security group—we'll call it `allow-ssh`—that allows inbound SSH traffic. Here, we allow traffic from any IP address, but you could choose a narrower range, if you know your public IP address.
+
+    $ aws ec2 create-security-group --group-name allow-ssh \
+        --description "allows all inbound SSH traffic"
+    $ aws ec2 authorize-security-group-ingress --group-name allow-ssh \
+        --protocol tcp --port 22 --cidr 0.0.0.0/0
+
+Finally, you can boot and provision your AWS EC2 machine with Vagrant.
+
+    $ vagrant up --provider=aws
+
+Vagrant will spend a few minutes configuring and building the VM. Once it's done, run
+
+    $ vagrant ssh
+
+You should see the bash prompt `admin@ip-...:/vagrant$`, and may proceed to [**Usage**](#usage) below.
+
+The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant halt` to exit, and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+
+### Minerva (Mount Sinai users only)
+
+The pipeline can also access all required software using the module system on [Minerva](http://hpc.mssm.edu). Clone this repository to a directory and `cd` into it.  You'll want to configure your environment first using the included script:
+
+    $ cp scripts/example.MINERVA.env.sh scripts/env.sh  
 
 The defaults should work for any Minerva user.  Then, you can source the script into your shell and install required gems locally into the `vendor/bundle` directory as follows:
 
     $ source scripts/env.sh
     $ bundle install --deployment
 
-When this is complete, you should be able to run rake to kick off the pipeline as follows. However, also read **[Environment variables](#environment-variables)** below, as certain tasks require more variables to be set before being invoked.
+When this is complete, you should be able to continue with the steps below.
+
+### Installing directly on Linux (advanced users)
+
+You may be able to install prerequisites directly on a Linux machine by editing `scripts/bootstrap.debian-stretch.sh` to fit your distro's needs. As the name suggests, it was designed for [Debian 9 "Stretch"][deb], but will likely run with minor changes on most Debian-based distros, including Ubuntu and Mint. Note that this script must be run as root, expects the pipeline will be run by `$DEFAULT_USER` i.e. `UID=1000`, and assumes this repo is already checked out into `/vagrant`.
+
+## Usage
+
+Rake, aka [ruby make][], is used to kick off the pipeline as follows. However, also read **[Environment variables](#environment-variables)** below, as certain tasks require more variables to be set before being invoked.
 
     $ rake -T                    # list the available tasks
     $ rake $TASK_NAME            # run the task named $TASK_NAME
     $ FOO="bar" rake $TASK_NAME  # run $TASK_NAME with FOO set to "bar"
 
-**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`.
+**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`. If you are using Vagrant, this is configured to happen automatically (in `~/.profile`).
+
+[ruby make]: https://github.com/ruby/rake
 
 ### Environment variables
 
@@ -41,17 +110,17 @@ Variable             | Required by                           | Default | Purpose
 ---------------------|---------------------------------------|---------|-----------------------------------
 `OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
 `IN_FOFN`            | `mugsy` `mauve` `sv_snv`              | (none)  | A file containing filenames that will be processed as input
-`IN_QUERY`           | `heatmap` `parsnp`                    | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_MYSQL_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
+`IN_QUERY`           | `heatmap` `parsnp`                    | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
 `OUT_PREFIX`         | all tasks                             | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
 `SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
 `REF`                | `parsnp`                              | (random)| Specify a reference genome for parsnp
-`GBK`                | `parsnp`                              | (none)  | Specify a genbank file for parsnp
-`MASH_CUTOFF`        | `parsnp`                              | 0.1     | Create clusters of this maximum diameter in mash distance units before running parsnp
-`MAX_CLUSTER_SIZE`   | `parsnp`                              | 500     | Do not attempt to use parsnp on more than this number of input sequences
+`GBK`                | `parsnp`                              | (none)  | Specify a reference genbank file for parsnp
+`MASH_CUTOFF`        | `parsnp`                              | 0.02    | Create clusters of this maximum diameter in mash distance units before running parsnp
+`MAX_CLUSTER_SIZE`   | `parsnp`                              | 100     | Do not attempt to use parsnp on more than this number of input sequences
 `IGB_DIR`            | `heatmap` `parsnp`                    | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
-`PATHOGENDB_MYSQL_URI` | `heatmap` `parsnp`                  | (none)  | How to connect to PathogenDB's MySQL database. Must be formatted as `mysql2://user:pass@host/database`
+`PATHOGENDB_URI`     | `heatmap` `parsnp`                  | (none)  | How to connect to the PathogenDB database. Must be formatted as `mysql2://user:pass@host/database`
 
 According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
 

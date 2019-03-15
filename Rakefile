@@ -36,15 +36,15 @@ OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
-PATHOGENDB_MYSQL_URI = ENV['PATHOGENDB_MYSQL_URI']
-PATHOGENDB_MYSQL_URI = nil if PATHOGENDB_MYSQL_URI =~ /user:pass@host/ # ignore the example value
+ENV['PATHOGENDB_URI'] ||= ENV['PATHOGENDB_MYSQL_URI'] # for compatibility with older `scripts/env.sh`
+PATHOGENDB_URI = ENV['PATHOGENDB_URI'] == 'user:pass@host' ? nil : ENV['PATHOGENDB_URI']
 PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
 IGB_DIR = ENV['IGB_DIR']
 
 if IN_QUERY
-  abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
+  abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_URI" unless PATHOGENDB_URI
   abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
-  pdb = PathogenDBClient.new(PATHOGENDB_MYSQL_URI, adapter: PATHOGENDB_ADAPTER)
+  pdb = PathogenDBClient.new(PATHOGENDB_URI, adapter: PATHOGENDB_ADAPTER)
   IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
 else
   begin
@@ -87,8 +87,6 @@ end
 file "#{REPO_DIR}/scripts/env.sh" => "#{REPO_DIR}/scripts/example.env.sh" do
   cp "#{REPO_DIR}/scripts/example.env.sh", "#{REPO_DIR}/scripts/env.sh"
 end
-
-ENV_ERROR = "Configure this in scripts/env.sh and run `source scripts/env.sh` before running rake."
 
 desc "Checks environment variables and requirements before running tasks"
 task :check => [:env, "#{REPO_DIR}/scripts/env.sh", :mugsy_install, :clustalw, :raxml, 
@@ -139,7 +137,8 @@ file "#{RAXML_DIR}/raxmlHPC" do
     SH
   end
   Dir.chdir("#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2") do
-    (system "make -f Makefile.gcc" and cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")) or abort
+    system "make -f Makefile.gcc" or abort
+    cp("raxmlHPC", "#{RAXML_DIR}/raxmlHPC")
   end
   rm_rf "#{File.dirname(CLUSTALW_DIR)}/standard-RAxML-8.0.2"
 end
@@ -598,10 +597,10 @@ SNV_COUNT_FILES = SNV_FILES.map{ |path| path.sub(%r{\.snv\.bed$}, '.snps.count')
 multifile HEATMAP_SNV_JSON_FILE => SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying IN_FOFN or IN_QUERY" unless IN_PATHS
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
-  abort "FATAL: Task heatmap requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
+  abort "FATAL: Task heatmap requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
   opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY, adapter: PATHOGENDB_ADAPTER}
-  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
+  json = heatmap_json(IN_PATHS, PATHOGENDB_URI, opts) do |json, node_hash|
     SNV_COUNT_FILES.tqdm.each do |count_file|
       snp_distance = File.read(count_file).strip.to_i
       genomes = genomes_from_task_name(count_file)
@@ -666,7 +665,14 @@ PARSNP_CLUSTERS_TSV = "#{OUT_PREFIX}.repeat_mask.msh.clusters.tsv"
 PARSNP_VCFS_NPZ_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.parsnp.vcfs.npz"
 
 desc "uses Parsnp to create *.xmfa, *.ggr, and *.tree files plus a SNV distance matrix"
-task :parsnp => [:check, PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE, PARSNP_HEATMAP_JSON_FILE]
+task :parsnp => [:check, :parsnp_check, PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FILE, 
+    PARSNP_HEATMAP_JSON_FILE]
+
+task :parsnp_check do
+  abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
+  abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task parsnp requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI
+end
 
 def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
@@ -831,6 +837,8 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
   Dir.mktmpdir do |tmp|
     open("#{tmp}/in_paths.txt", "w") { |f| f.write(IN_PATHS.join("\n")) }
     clean_name_regex = pdb.clean_genome_name_regex && pdb.clean_genome_name_regex.shellescape
+    sequin_annots = pdb.genome_annotation_format == ".features_table.txt"
+    transl_table = pdb.genetic_code_table && pdb.genetic_code_table.to_s.shellescape
     # NOTE: Because of NumPy <-> python 2.7.x bugs, this script uniquely requires python 2.7.14 !!!
     system <<-SH or abort
       module load python/2.7.14
@@ -838,8 +846,10 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
       python #{REPO_DIR}/scripts/parsnp_vcfs_to_npz.py \
           #{input_parsnp_vcfs.map(&:shellescape).join(' ')} \
           --fastas #{tmp}/in_paths.txt \
-          #{clean_name_regex ? "--clean_genome_names " + clean_name_regex : ''} \
-          --output #{t.name}
+          #{clean_name_regex ? "--clean_genome_names " + clean_name_regex : ""} \
+          #{sequin_annots ? "--sequin_annotations" : ""} \
+          #{transl_table ? "--transl_table " + transl_table : ""} \
+          --output #{t.name.shellescape}
     SH
   end
 end
@@ -853,10 +863,6 @@ def parsnp_heatmap_json_prereqs
   prereqs
 end
 file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
-  abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
-  abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
-  abort "FATAL: Task parsnp requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI
-  
   input_parsnp_tsvs = t.sources.select{ |src| src =~ %r{/parsnp\.tsv$} }
   snv_tsvs = {}
   which_tsv = {}
@@ -875,7 +881,7 @@ file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
 
   opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs", trees: [], parsnp_stats: [], 
           adapter: PATHOGENDB_ADAPTER}
-  json = heatmap_json(IN_PATHS, PATHOGENDB_MYSQL_URI, opts) do |json, node_hash|
+  json = heatmap_json(IN_PATHS, PATHOGENDB_URI, opts) do |json, node_hash|
     (node_hash.keys - which_tsv.keys).each do |name|
       STDERR.puts "WARN: Assembly #{name} isn't in any of the parsnp alignments; skipping"
     end
@@ -933,7 +939,7 @@ task :epi => [:check, HEATMAP_EPI_JSON_FILE]
 file HEATMAP_EPI_JSON_FILE do |task|
   abort "FATAL: Task epi requires specifying IN_QUERY" unless IN_QUERY
   abort "FATAL: Task epi requires specifying OUT_PREFIX" unless OUT_PREFIX
-  abort "FATAL: Task epi requires specifying PATHOGENDB_MYSQL_URI" unless PATHOGENDB_MYSQL_URI 
+  abort "FATAL: Task epi requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
   json = {generated: DateTime.now.to_s, in_query: IN_QUERY, isolates:[]}
   pdb.isolates(IN_QUERY).each do |row|

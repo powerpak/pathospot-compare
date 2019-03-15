@@ -26,9 +26,7 @@ class PathogenDBClient
     dataset
   end
   
-  def assembly_id_field
-    :assembly_data_link
-  end
+  def assembly_id_field(fully_qualified=false); :assembly_data_link; end
   
   def assembly_paths(base_path, where_clause=nil)
     names = assemblies(where_clause).select_map(assembly_id_field)
@@ -38,9 +36,7 @@ class PathogenDBClient
     end
   end
   
-  def clean_genome_name_regex
-    nil
-  end
+  def clean_genome_name_regex; nil; end
   
   def path_to_genome_name(path)
     genome_name = File.basename(path).sub(/\.\w+$/, '')
@@ -50,6 +46,13 @@ class PathogenDBClient
     genome_name
   end
   
+  def genome_annotation_format; ".bed"; end
+  
+  # Which NCBI genetic code is used by the pathogens in this database. Necessary for
+  # correct variant annotation. Default is 11 for bacteria.
+  # See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for all choices.
+  def genetic_code_table; 11; end
+  
   def isolates(where_clause=nil)
     dataset = @db[:tIsolates]
         .left_join(:tOrganisms, :organism_ID => :organism_ID)
@@ -57,8 +60,10 @@ class PathogenDBClient
     dataset
   end
   
+  def pt_id_field(fully_qualified=false); :eRAP_ID; end
+  
   def encounters(where_clause=nil)
-    erap_ids = assemblies(where_clause).select_map(:eRAP_ID).uniq
+    erap_ids = assemblies(where_clause).select_map(pt_id_field(true)).uniq
     dataset = @db[:tPatientEncounter]
         .select(:eRAP_ID,
                 Sequel.as(:start_date, :start_time),
