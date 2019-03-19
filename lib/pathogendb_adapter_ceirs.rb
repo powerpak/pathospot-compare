@@ -14,7 +14,7 @@ module PathogenDBAdapterCEIRS
         .left_join(:tPVI_Surveillance, :specimen_ID => :Sample_Name)
         .left_join(:tIsolates, :isolate_ID => :cml_isolate_id)
         .left_join(:tHospitals, :hospital_ID => :tPVI_Surveillance__hospital_ID)
-    dataset = dataset.select(:tCEIRS_assemblies__Extract_ID)
+    dataset = dataset.select(:tCEIRS_assemblies__assembly_ID)
         .select_append(Sequel.as(
             Sequel.function(:IFNULL, :tPVI_Surveillance__eRAP_ID, :Sample_Name),
             :eRAP_ID))
@@ -30,13 +30,13 @@ module PathogenDBAdapterCEIRS
   end
   
   def assembly_id_field(fully_qualified=false)
-    fully_qualified ? :tCEIRS_assemblies__Extract_ID : :Extract_ID
+    fully_qualified ? :tCEIRS_assemblies__assembly_ID : :assembly_ID
   end
   
   def assembly_paths(base_path, where_clause=nil)
     names = assemblies(where_clause).select_map(assembly_id_field(true))
     paths = names.map do |n|
-      glob = File.expand_path("#{n}/??_#{n}_final.fa", base_path)
+      glob = File.expand_path("#{n}/aid_#{n}.fa", base_path)
       Dir.glob(glob).first || glob
     end
     paths.select do |f|
@@ -44,7 +44,7 @@ module PathogenDBAdapterCEIRS
     end
   end
   
-  def clean_genome_name_regex; '^\w{2}_|_final$'; end
+  def clean_genome_name_regex; '^aid_'; end
   
   def genome_annotation_format; ".features_table.txt"; end
   
