@@ -32,7 +32,7 @@ def heatmap_json(in_paths, mysql_uri, opts)
     end
     INTERESTING_COLS.each do |col|
       meta = v[:metadata][col]
-      node << meta.is_a?(Time) ? meta.strftime("%FT%T%:z") : meta
+      node << (meta.is_a?(Time) ? meta.strftime("%FT%T%:z") : meta)
     end
     json[:nodes] << node
     v[:id] = json[:nodes].size - 2              # The header row doesn't count!
