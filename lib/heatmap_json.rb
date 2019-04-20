@@ -30,7 +30,10 @@ def heatmap_json(in_paths, mysql_uri, opts)
     unless v[:metadata]
       puts "WARN: No PathogenDB metadata found for assembly #{k}; skipping"; next
     end
-    INTERESTING_COLS.each { |col| node << v[:metadata][col] }
+    INTERESTING_COLS.each do |col|
+      meta = v[:metadata][col]
+      node << (meta.is_a?(Time) ? meta.strftime("%FT%T%:z") : meta)
+    end
     json[:nodes] << node
     v[:id] = json[:nodes].size - 2              # The header row doesn't count!
   end
