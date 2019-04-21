@@ -3,8 +3,8 @@
 module unload ruby
 module load ruby
 
-# You need to configure this with a connection string for PathogenDB's MySQL database
-export PATHOGENDB_MYSQL_URI="mysql2://user:pass@host/database"
+# You need to configure this with a connection string for the PathogenDB database
+export PATHOGENDB_URI="mysql2://user:pass@host/database"
 
 # Defaults will probably work for these
 export PERL5LIB="/usr/bin/perl5.10.1"

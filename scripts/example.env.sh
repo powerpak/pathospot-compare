@@ -12,7 +12,7 @@ PATH="$HOME/bin:$PATH"
 
 # Configure this with a connection string for your PathogenDB database
 # Here, we provide a URI to the example included SQLite database
-export PATHOGENDB_URI="mysql2://user:pass@host/database"
+export PATHOGENDB_URI="sqlite://example/mrsa.db"
 
 export TMP="/tmp"
-export IGB_DIR="/vagrant/examples/igb"
+export IGB_DIR="/vagrant/example/igb"

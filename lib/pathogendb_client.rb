@@ -1,4 +1,5 @@
 require 'mysql2'
+require 'sqlite3'
 require 'sequel'
 
 class PathogenDBClient
@@ -6,6 +7,7 @@ class PathogenDBClient
   def initialize(connection_string=nil, opts={})
     raise ArgumentError, "FATAL: PathogenDBClient requires a connection_string" unless connection_string
     @db = Sequel.connect(connection_string)
+    
     if opts[:adapter]
       STDERR.puts "WARN: Overriding PathogenDBClient methods using adapter '#{opts[:adapter]}'"
       require_relative "./pathogendb_adapter_#{opts[:adapter].downcase}"

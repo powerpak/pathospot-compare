@@ -2,22 +2,42 @@ require 'rubygems'
 require 'bundler/setup'
 require 'shellwords'
 require_relative '../lib/pathogendb_client'
+require_relative '../lib/pathogendb_creator'
 
-task :default => []
+task :default => ["mrsa.db"]
+
+IN_QUERY = ENV['IN_QUERY']
+PATHOGENDB_URI = ENV['PATHOGENDB_URI'] == 'user:pass@host' ? nil : ENV['PATHOGENDB_URI']
+PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
+IGB_DIR = ENV['IGB_DIR']
 
 if IN_QUERY
   abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_URI" unless PATHOGENDB_URI
   abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
   pdb = PathogenDBClient.new(PATHOGENDB_URI, adapter: PATHOGENDB_ADAPTER)
   IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
-else
-  begin
-    IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
-  rescue Errno::ENOENT
-    abort "FATAL: Could not read the file you specified as IN_FOFN. Check the path and permissions?"
-  end
 end
 
+#############################################################
+#  IMPORTANT!
+#  This Rakefile runs with the working directory as the parent of this Rakefile
+#     (unlike the main Rakefile, which uses the value of the OUT environment variable)
+#  All filenames from hereon are relative to that directory
+#############################################################
+Dir.chdir(File.dirname(__FILE__))
+
 file "mrsa.db" do |t|
+  abort "FATAL: building mrsa.db requires IN_QUERY" unless IN_QUERY
+  assemblies = pdb.assemblies(IN_QUERY)
+  isolates = pdb.isolates(IN_QUERY)
   
+  mrsa_db = PathogenDBCreator.new("sqlite://mrsa.db")
+  mrsa_db.copy_tables_for_assemblies(assemblies)
+  mrsa_db.copy_isolates(isolates)
+  
+  ## TODO: anonymization / rekeying
 end
+
+directory "igb"
+## TODO: copy IN_PATHS (at the very least, the .fasta and .bed files) to ./igb 
+##       to provide the example set of MRSA genomes

@@ -1,3 +1,5 @@
+require 'sequel'
+
 module PathogenDBAdapterCEIRS
   
   # Maps columns in the tCEIRS_* tables to their equivalent columns in the 
