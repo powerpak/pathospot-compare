@@ -8,13 +8,17 @@ class PathogenDBClient
     raise ArgumentError, "FATAL: PathogenDBClient requires a connection_string" unless connection_string
     @db = Sequel.connect(connection_string)
     
+    # Although this looks like a no-op, it ensures the database connection has actually been opened
+    # Otherwise Sequel will lazily connect, and with SQLite, it won't work if Dir.pwd has changed
+    @tables = @db.tables
+    
     if opts[:adapter]
       STDERR.puts "WARN: Overriding PathogenDBClient methods using adapter '#{opts[:adapter]}'"
       require_relative "./pathogendb_adapter_#{opts[:adapter].downcase}"
       extend Object.const_get("PathogenDBAdapter#{opts[:adapter]}")
     end
   end
-  
+    
   def assemblies(where_clause=nil)
     if where_clause.is_a? Array
       where_clause = {assembly_id_field => where_clause}

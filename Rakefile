@@ -36,10 +36,14 @@ OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 BED_LINES_LIMIT = ENV['BED_LINES_LIMIT'] ? ENV['BED_LINES_LIMIT'].to_i : 1000
-ENV['PATHOGENDB_URI'] ||= ENV['PATHOGENDB_MYSQL_URI'] # for compatibility with older `scripts/env.sh`
+if ENV['PATHOGENDB_MYSQL_URI']
+  STDERR.puts "Please edit your scripts/env.sh to use PATHOGENDB_URI instead of PATHOGENDB_MYSQL_URI"
+  ENV['PATHOGENDB_URI'] = ENV['PATHOGENDB_MYSQL_URI']
+end
 PATHOGENDB_URI = ENV['PATHOGENDB_URI'] == 'user:pass@host' ? nil : ENV['PATHOGENDB_URI']
 PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
 IGB_DIR = ENV['IGB_DIR']
+DISTANCE_THRESHOLD = ENV['DISTANCE_THRESHOLD'] ? ENV['DISTANCE_THRESHOLD'].to_i : 10
 
 if IN_QUERY
   abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_URI" unless PATHOGENDB_URI
@@ -599,7 +603,8 @@ multifile HEATMAP_SNV_JSON_FILE => SNV_COUNT_FILES do |task|
   abort "FATAL: Task heatmap requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task heatmap requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
-  opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY, adapter: PATHOGENDB_ADAPTER}
+  opts = {out_dir: "#{OUT_PREFIX}.sv_snv", in_query: IN_QUERY, adapter: PATHOGENDB_ADAPTER,
+          distance_unit: "nucmer SNVs", distance_threshold: DISTANCE_THRESHOLD}
   json = heatmap_json(IN_PATHS, PATHOGENDB_URI, opts) do |json, node_hash|
     SNV_COUNT_FILES.tqdm.each do |count_file|
       snp_distance = File.read(count_file).strip.to_i
@@ -879,8 +884,8 @@ file PARSNP_HEATMAP_JSON_FILE => parsnp_heatmap_json_prereqs do |t|
     tsv_keys[tsv] = Hash[seqs.zip(1..tsv_data.size)]
   end
 
-  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs", trees: [], parsnp_stats: [], 
-          adapter: PATHOGENDB_ADAPTER}
+  opts = {in_query: IN_QUERY, distance_unit: "parsnp SNPs", distance_threshold: DISTANCE_THRESHOLD,
+          adapter: PATHOGENDB_ADAPTER, trees: [], parsnp_stats: []}
   json = heatmap_json(IN_PATHS, PATHOGENDB_URI, opts) do |json, node_hash|
     (node_hash.keys - which_tsv.keys).each do |name|
       STDERR.puts "WARN: Assembly #{name} isn't in any of the parsnp alignments; skipping"

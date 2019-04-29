@@ -10,6 +10,7 @@ IN_QUERY = ENV['IN_QUERY']
 PATHOGENDB_URI = ENV['PATHOGENDB_URI'] == 'user:pass@host' ? nil : ENV['PATHOGENDB_URI']
 PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
 IGB_DIR = ENV['IGB_DIR']
+SRAND = ENV['SRAND'] =~ /^\d+$/ ? ENV['SRAND'].to_i : nil
 
 if IN_QUERY
   abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_URI" unless PATHOGENDB_URI
@@ -31,11 +32,11 @@ file "mrsa.db" do |t|
   assemblies = pdb.assemblies(IN_QUERY)
   isolates = pdb.isolates(IN_QUERY)
   
-  mrsa_db = PathogenDBCreator.new("sqlite://mrsa.db")
-  mrsa_db.copy_tables_for_assemblies(assemblies)
-  mrsa_db.copy_isolates(isolates)
+  mrsa_db = PathogenDBCreator.new("sqlite://mrsa.db", srand: SRAND)
+  mrsa_db.copy_tables_for_assemblies!(assemblies)
+  mrsa_db.copy_isolates!(isolates)
   
-  ## TODO: anonymization / rekeying
+  mrsa_db.deidentify!
 end
 
 directory "igb"

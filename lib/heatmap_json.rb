@@ -4,12 +4,16 @@ INTERESTING_COLS = [:assembly_ID, :eRAP_ID, :mlst_subtype, :isolate_ID, :procedu
       :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
 EXPECTED_HEATMAP_JSON_OPTS = [:distance_unit, :in_query, :out_dir]
 
-def heatmap_json(in_paths, mysql_uri, opts)
-  pdb = PathogenDBClient.new(mysql_uri, opts)
+def heatmap_json(in_paths, pdb_uri, opts)
+  pdb = nil
+  Dir.chdir(File.dirname(File.dirname(__FILE__))) do
+    pdb = PathogenDBClient.new(pdb_uri, opts)
+  end
   
   json = {
     generated: DateTime.now.to_s,
     distance_unit: opts[:distance_unit] || "nucmer SNVs",
+    distance_threshold: opts[:distance_threshold] ? opts[:distance_threshold].to_i : 10,
     in_query: opts[:in_query],
     out_dir: opts[:out_dir],
     nodes: [[:name] + INTERESTING_COLS],
