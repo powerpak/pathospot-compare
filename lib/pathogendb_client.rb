@@ -4,6 +4,14 @@ require 'sequel'
 
 class PathogenDBClient
   
+  # What columns in tAssemblies should be faked as dummy columns in tIsolates?
+  # This allows the same `where_clause` to be applied to both `#assemblies` and `#isolates`
+  #    (convenient for running multiple tasks in the Rakefile with the same parameters)
+  # This is a hash of column names => dummy values
+  ISOLATE_DUMMY_COLUMNS = {
+    qc_failed: 0
+  }
+  
   def initialize(connection_string=nil, opts={})
     raise ArgumentError, "FATAL: PathogenDBClient requires a connection_string" unless connection_string
     @db = Sequel.connect(connection_string)
@@ -19,6 +27,8 @@ class PathogenDBClient
     end
   end
     
+  # Select assemblies from the database, prejoined with all dependent tables, based on a SQL `where_clause`
+  # `where_clause` can be an `Array`, in which case it is a list of assembly names
   def assemblies(where_clause=nil)
     if where_clause.is_a? Array
       where_clause = {assembly_id_field => where_clause}
@@ -28,6 +38,7 @@ class PathogenDBClient
         .left_join(:tStocks, :stock_ID => :stock_ID)
         .left_join(:tIsolates, :isolate_ID => :isolate_ID)
         .left_join(:tOrganisms, :organism_ID => :organism_ID)
+        .left_join(:tHospitals, :hospital_ID => :tIsolates__hospital_ID)
     dataset = dataset.where(where_clause) if where_clause
     dataset
   end
@@ -59,21 +70,42 @@ class PathogenDBClient
   # See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for all choices.
   def genetic_code_table; 11; end
   
-  def isolates(where_clause=nil)
+  
+  # Adds dummy columns to a query of `tIsolates` so that columns in `IN_QUERY`in `tAssemblies`,
+  # e.g., `qc_failed`, have no effect on a query of only `tIsolates`
+  def add_isolates_dummy_columns(dataset, extra_cols=ISOLATE_DUMMY_COLUMNS)
+    dummy_cols = [:isolate_ID]
+    extra_cols.each do |name, val|
+      dummy_cols << Sequel.lit("#{@db.literal(val)} as #{@db.literal(name)}")
+    end
+    dummy_table = @db[:tIsolates].select(*dummy_cols)
+    dataset.join(dummy_table, isolate_ID: :tIsolates__isolate_ID)
+  end
+  
+  # Select isolates from the database, prejoined with all dependent tables, based an a SQL `where_clause`
+  # By default dummy columns are added so that if the `where_clause` mentions columns in tAssemblies
+  # (see `ISOLATE_DUMMY_COLUMNS` above), the query still succeeds; to turn this off, set `no_dummy_cols`
+  # to `true`
+  def isolates(where_clause=nil, no_dummy_cols=false)
     dataset = @db[:tIsolates]
         .left_join(:tOrganisms, :organism_ID => :organism_ID)
+        .left_join(:tHospitals, :hospital_ID => :tIsolates__hospital_ID)
+    dataset = add_isolates_dummy_columns(dataset) unless no_dummy_cols
     dataset = dataset.where(where_clause) if where_clause
     dataset
   end
   
   def pt_id_field(fully_qualified=false); :eRAP_ID; end
   
+  # The where_clause here applies to tAssemblies, and encounters are chosen by eRAP_ID
   def encounters(where_clause=nil)
     erap_ids = assemblies(where_clause).select_map(pt_id_field(true)).uniq
     dataset = @db[:tPatientEncounter]
+        .left_join(:tHospitals, :hospital_ID => :tPatientEncounter__hospital_ID)
         .select(:eRAP_ID,
                 Sequel.as(:start_date, :start_time),
                 Sequel.as(:end_date, :end_time),
+                :hospital_abbreviation,
                 :department_name,
                 :encounter_type,
                 :age,
@@ -81,6 +113,19 @@ class PathogenDBClient
                 :transfer_to)
         .where(:eRAP_ID => erap_ids)
         .exclude(:department_name => '')
+    dataset
+  end
+  
+  # The where_clause here applies to tAssemblies, and isolate tests are chosen by eRAP_ID
+  def isolate_test_results(where_clause=nil)
+    erap_ids = assemblies(where_clause).select_map(pt_id_field(true)).uniq
+    dataset = @db[:tIsolateTestResults]
+        .left_join(:tIsolateTests, :test_ID => :tIsolateTestResults__test_ID)
+        .select(:eRAP_ID,
+                :test_date,
+                :procedure_name,
+                :test_result)
+        .where(:eRAP_ID => erap_ids)
     dataset
   end
   

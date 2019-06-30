@@ -4,12 +4,13 @@ require 'shellwords'
 require_relative '../lib/pathogendb_client'
 require_relative '../lib/pathogendb_creator'
 
-task :default => ["mrsa.db"]
+task :default => [:example]
 
 IN_QUERY = ENV['IN_QUERY']
 PATHOGENDB_URI = ENV['PATHOGENDB_URI'] == 'user:pass@host' ? nil : ENV['PATHOGENDB_URI']
 PATHOGENDB_ADAPTER = ENV['PATHOGENDB_ADAPTER']
 IGB_DIR = ENV['IGB_DIR']
+KEYFILES_PREFIX = ENV['KEYFILES_PREFIX']
 SRAND = ENV['SRAND'] =~ /^\d+$/ ? ENV['SRAND'].to_i : nil
 
 if IN_QUERY
@@ -27,6 +28,9 @@ end
 #############################################################
 Dir.chdir(File.dirname(__FILE__))
 
+desc "Builds the example dataset in mrsa.db. Default task."
+task :example => ["mrsa.db"]
+
 file "mrsa.db" do |t|
   abort "FATAL: building mrsa.db requires IN_QUERY" unless IN_QUERY
   assemblies = pdb.assemblies(IN_QUERY)
@@ -36,7 +40,7 @@ file "mrsa.db" do |t|
   mrsa_db.copy_tables_for_assemblies!(assemblies)
   mrsa_db.copy_isolates!(isolates)
   
-  mrsa_db.deidentify!
+  mrsa_db.deidentify!(KEYFILES_PREFIX)
 end
 
 directory "igb"

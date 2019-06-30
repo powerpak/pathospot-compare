@@ -241,6 +241,7 @@ end
 # =========
 # = mugsy =
 # =========
+# TODO: DEPRECATE
 
 desc "Produces a phylogenetic tree using Mugsy, ClustalW, and RAxML"
 task :mugsy => [:check, "RAxML_bestTree.#{OUT_PREFIX}", "RAxML_marginalAncestralStates.#{OUT_PREFIX}_mas","#{OUT_PREFIX}_snp_tree.newick"]
@@ -368,6 +369,7 @@ end
 # ==============
 # = mugsy_plot =
 # ==============
+# TODO: DEPRECATE
 
 desc "Produces plots of the phylogenetic trees created by `rake mugsy`"
 task :mugsy_plot => [:check, "RAxML_bestTree.#{OUT_PREFIX}.pdf", "#{OUT_PREFIX}_snp_tree.newick.pdf"]
@@ -395,6 +397,7 @@ end
 # =========
 # = mauve =
 # =========
+# TODO: DEPRECATE
 
 desc "Produces a Mauve alignment"
 task :mauve => [:check, "#{OUT_PREFIX}.xmfa", "#{OUT_PREFIX}.xmfa.backbone", "#{OUT_PREFIX}.xmfa.bbcols"]
@@ -592,6 +595,7 @@ end
 # ===========
 # = heatmap =
 # ===========
+# TODO: Rename pairwise_nucmer?
 
 HEATMAP_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap.json"
 desc "Generate assembly distances for heatmap in pathogendb-viz"
@@ -623,6 +627,7 @@ end
 # ============
 # = heatmap3 =
 # ============
+# TODO: DEPRECATE
 
 HEATMAP3_SNV_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.snv.heatmap3.json"
 desc "Generate assembly distances for heatmap in pathogendb-viz (mode 3)"
@@ -926,7 +931,7 @@ file ENCOUNTERS_TSV_FILE do |t|
   
   CSV.open(ENCOUNTERS_TSV_FILE, "wb", col_sep: "\t") do |tsv|
     tsv << encounters.columns.map(&:to_s)
-    encounters.each do |row| 
+    encounters.each do |row|
       tsv << row.values.map{ |v| v.is_a?(Time) ? v.strftime("%FT%T%:z") : v.to_s }
     end
   end
@@ -946,9 +951,19 @@ file HEATMAP_EPI_JSON_FILE do |task|
   abort "FATAL: Task epi requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task epi requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
-  json = {generated: DateTime.now.to_s, in_query: IN_QUERY, isolates:[]}
+  ISOLATES_COLS = [:order_date, :hospital_abbreviation, :collection_unit]
+  isolate_test_results = pdb.isolate_test_results(IN_QUERY)
+  json = {
+    generated: DateTime.now.to_s,
+    in_query: IN_QUERY, 
+    isolates: [ISOLATES_COLS.map{ |col| col.to_s }],
+    isolate_test_results: [isolate_test_results.columns]
+  }
   pdb.isolates(IN_QUERY).each do |row|
-    json[:isolates] << [row[:order_date], row[:collection_unit]]
+    json[:isolates] << row.values_at(*ISOLATES_COLS)
+  end
+  isolate_test_results.each do |row|
+    json[:isolate_test_results] << row
   end
  
   File.open(task.name, "w") { |f| JSON.dump(json, f) }

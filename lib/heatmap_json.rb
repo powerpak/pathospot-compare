@@ -1,7 +1,7 @@
 require_relative './pathogendb_client'
 
 INTERESTING_COLS = [:assembly_ID, :eRAP_ID, :mlst_subtype, :isolate_ID, :procedure_desc, :order_date, 
-      :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
+      :hospital_abbreviation, :collection_unit, :contig_count, :contig_N50, :contig_maxlength]
 EXPECTED_HEATMAP_JSON_OPTS = [:distance_unit, :in_query, :out_dir]
 
 def heatmap_json(in_paths, pdb_uri, opts)
