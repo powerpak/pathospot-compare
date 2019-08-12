@@ -56,7 +56,7 @@ class PathogenDBClient
   def clean_genome_name_regex; nil; end
   
   def path_to_genome_name(path)
-    genome_name = File.basename(path).sub(/\.\w+$/, '')
+    genome_name = File.basename(path).sub(/(\.\w+)+$/, '')
     if clean_genome_name_regex
       genome_name = genome_name.gsub(Regexp.new(clean_genome_name_regex), '')
     end
@@ -70,8 +70,7 @@ class PathogenDBClient
   # See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for all choices.
   def genetic_code_table; 11; end
   
-  
-  # Adds dummy columns to a query of `tIsolates` so that columns in `IN_QUERY`in `tAssemblies`,
+  # Adds dummy columns to queries of `tIsolates` so that columns in `IN_QUERY` specific to `tAssemblies`,
   # e.g., `qc_failed`, have no effect on a query of only `tIsolates`
   def add_isolates_dummy_columns(dataset, extra_cols=ISOLATE_DUMMY_COLUMNS)
     dummy_cols = [:isolate_ID]
@@ -128,5 +127,11 @@ class PathogenDBClient
         .where(:eRAP_ID => erap_ids)
     dataset
   end
+  
+  # Helper method for converting timestamps returned within Sequel datasets to ISO 8601
+  def stringify_times(enumerable)
+    enumerable.map{ |v| v.is_a?(Time) ? v.strftime("%FT%T%:z") : v.to_s }
+  end
+  
   
 end

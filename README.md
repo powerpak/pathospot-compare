@@ -115,14 +115,13 @@ Variable             | Required by                           | Default | Purpose
 `OUTGROUP`           | `mugsy`                               | (none)  | The [outgroup][] to specify for `RAxML`
 `SEED_WEIGHT`        | `mauve` `sv_snv`                      | (none)  | Use this seed weight for calculating initial anchors
 `LCB_WEIGHT`         | `mauve` `sv_snv`                      | (none)  | Minimum pairwise LCB score
-`REF`                | `parsnp`                              | (random)| Specify a reference genome for parsnp
-`GBK`                | `parsnp`                              | (none)  | Specify a reference genbank file for parsnp
+`REF`                | `parsnp`                              | (none)  | Specify a reference genome for parsnp. If not specified, the oldest genome by `order_date` within each mash cluster is used as the reference.
+`GBK`                | `parsnp`                              | (none)  | Specify a reference genbank file for parsnp. Overrides `REF` above.
 `MASH_CUTOFF`        | `parsnp`                              | 0.02    | Create clusters of this maximum diameter in mash distance units before running parsnp
 `MAX_CLUSTER_SIZE`   | `parsnp`                              | 100     | Do not attempt to use parsnp on more than this number of input sequences
 `DISTANCE_THRESHOLD` | `heatmap` `parsnp`                    | 10      | The default SNP threshold that will be used for clustering the heatmap in [pathogendb-viz][]
-`IGB_DIR`            | `heatmap` `parsnp`                    | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB
-`PATHOGENDB_URI`     | `heatmap` `parsnp`                    | (none)  | How to connect to the PathogenDB database. Must be formatted as `mysql2://user:pass@host/database`
-
+`IGB_DIR`            | `heatmap` `parsnp`                    | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB`
+`PATHOGENDB_URI`     | `heatmap` `parsnp`                    | (none)  | How to connect to the PathogenDB database. Must be formatted as `sqlite://relative/path/to/pathogen.db` or `mysql2://user:pass@host/database`
 
 According to [Darling et al.](http://dx.doi.org/10.1371/journal.pone.0011147), a good default for both `SEED_WEIGHT` and `LCB_WEIGHT` typically chosen by Mauve is log2((avg genome size) / 1.5).
 

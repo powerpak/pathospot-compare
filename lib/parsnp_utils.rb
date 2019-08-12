@@ -2,6 +2,9 @@
 # = These are helper functions for the `rake parsnp` pipeline in pathogendb-comparison =
 # ======================================================================================
 
+require 'pp'
+require_relative './pathogendb_client'
+
 # Extracts the cluster number from a path in the form of `#{OUT_PREFIX}.(\d+).\w+/...`
 # where the digits after OUT_PREFIX are the cluster number
 def clust_num_from_path(path)
@@ -60,4 +63,14 @@ def write_null_parsnp_clean_nwk(filename, clusters)
   File.open(filename, "w") do |f|
     f.write "(#{seq_name}:0);\n"
   end
+end
+
+# Given a list of fasta files about to be aligned using parsnp, suggest the fasta that should
+# be used as the reference genome, based on the oldest `order_date` annotated in PathogenDB
+def get_first_order_date_fasta(fastas, pdb)
+  abort "FATAL: PathogenDBClient required for parsnp REF picking" unless pdb.is_a? PathogenDBClient
+  genome_names = fastas.map{ |path| pdb.path_to_genome_name(path) }
+  genome_name_to_fasta = Hash[genome_names.zip(fastas)]
+  first_genome_name = pdb.assemblies(genome_names).order(:order_date).get(pdb.assembly_id_field)
+  genome_name_to_fasta[first_genome_name]
 end

@@ -768,9 +768,20 @@ rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
   # Special case: If there is only one genome in the cluster, create an empty .ggr file
   next touch(t.name) if t.sources.size == 1
   
-  referenceOrGenbank = ENV['REF'] ? "-r #{ENV['REF'].shellescape}" : "-r !"
-  referenceOrGenbank = "-g #{ENV['GBK'].shellescape}" if ENV['GBK']
+  # What reference should be used for this parsnp run? It can be set globally (with GBK or REF),
+  # which will only work if there is one mash cluster; otherwise, the oldest fasta in this mash
+  # cluster (by `order_date`) will be used as the reference genome
+  if ENV['GBK']
+    referenceOrGenbank = "-g #{ENV['GBK'].shellescape}"
+  elsif ENV['REF']
+    referenceOrGenbank = "-r #{ENV['REF'].shellescape}"
+  else
+    referenceOrGenbank = "-r " + get_first_order_date_fasta(t.sources, pdb).shellescape
+  end
   
+  unless t.sources.map{ |f| File.dirname(f) }.uniq.size == 1
+    abort "FATAL: parsnp inputs cannot be in different subdirectories"
+  end
   input_dir = File.dirname(t.sources.first)
   if (Dir.glob("#{input_dir}/*") - t.sources).size > 0
     STDERR.puts "WARN: Deleting extraneous files/symlinks in #{input_dir} before running parsnp"
@@ -932,7 +943,7 @@ file ENCOUNTERS_TSV_FILE do |t|
   CSV.open(ENCOUNTERS_TSV_FILE, "wb", col_sep: "\t") do |tsv|
     tsv << encounters.columns.map(&:to_s)
     encounters.each do |row|
-      tsv << row.values.map{ |v| v.is_a?(Time) ? v.strftime("%FT%T%:z") : v.to_s }
+      tsv << pdb.stringify_times(row.values)
     end
   end
 end
@@ -960,10 +971,10 @@ file HEATMAP_EPI_JSON_FILE do |task|
     isolate_test_results: [isolate_test_results.columns]
   }
   pdb.isolates(IN_QUERY).each do |row|
-    json[:isolates] << row.values_at(*ISOLATES_COLS)
+    json[:isolates] << pdb.stringify_times(row.values_at(*ISOLATES_COLS))
   end
   isolate_test_results.each do |row|
-    json[:isolate_test_results] << row
+    json[:isolate_test_results] << row.values
   end
  
   File.open(task.name, "w") { |f| JSON.dump(json, f) }
