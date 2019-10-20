@@ -2,7 +2,7 @@
 
 This is the comparative genomics pipeline for PathoSPOT, the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
 
-You run this pipeline on a set of sequenced pathogen genomes, annotated in an associated relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized in [pathoSPOT-visualize][]
+The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
 
 [pathoSPOT-visualize]: (https://github.com/powerpak/pathospot-visualize)
 
