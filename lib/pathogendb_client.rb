@@ -120,10 +120,18 @@ class PathogenDBClient
     erap_ids = assemblies(where_clause).select_map(pt_id_field(true)).uniq
     dataset = @db[:tIsolateTestResults]
         .left_join(:tIsolateTests, :test_ID => :tIsolateTestResults__test_ID)
-        .select(:eRAP_ID,
+        .left_join(:tOrganisms, :organism_ID => :tIsolateTestResults__organism_ID)
+        .left_join(:tHospitals, :hospital_ID => :tIsolateTests__hospital_ID)
+        .select(:tIsolateTestResults__test_ID,
+                :eRAP_ID,
                 :test_date,
+                :hospital_abbreviation,
+                :collection_unit,
                 :procedure_name,
-                :test_result)
+                :test_result,
+                :description,
+                :taxonomy_ID,
+                :isolate_ID)
         .where(:eRAP_ID => erap_ids)
     dataset
   end

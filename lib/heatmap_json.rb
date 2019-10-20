@@ -16,6 +16,7 @@ def heatmap_json(in_paths, pdb_uri, opts)
     distance_threshold: opts[:distance_threshold] ? opts[:distance_threshold].to_i : 10,
     in_query: opts[:in_query],
     out_dir: opts[:out_dir],
+    taxonomy_IDs: [],
     nodes: [[:name] + INTERESTING_COLS],
     links: []
   }
@@ -27,6 +28,7 @@ def heatmap_json(in_paths, pdb_uri, opts)
   node_hash = Hash[genome_names.map{ |n| [n, {}] }]
   assemblies.each do |row|
     node_hash[row[pdb.assembly_id_field].to_s][:metadata] = row
+    json[:taxonomy_IDs] << row[:taxonomy_ID]
   end
 
   node_hash.each do |k, v|
@@ -39,6 +41,7 @@ def heatmap_json(in_paths, pdb_uri, opts)
     v[:id] = json[:nodes].size - 2              # The header row doesn't count!
   end
 
+  json[:taxonomy_IDs].uniq!
   json[:links] = Array.new(json[:nodes].size - 1){ Array.new(json[:nodes].size - 1, nil) }
   yield(json, node_hash)
   json

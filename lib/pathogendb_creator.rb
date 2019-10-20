@@ -29,8 +29,8 @@ class PathogenDBCreator < PathogenDBClient
           :collection_sourceA, :collection_sourceB, :procedure_desc, :procedure_code]
     },
     {
-      table: :tOrganisms, 
-      match_on: :tOrganisms__organism_ID
+      table: :tOrganisms
+      # Without any match_on:, the whole table will be copied.
     },
     {
       table: :tHospitals 

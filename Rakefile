@@ -974,7 +974,7 @@ file HEATMAP_EPI_JSON_FILE do |task|
     json[:isolates] << pdb.stringify_times(row.values_at(*ISOLATES_COLS))
   end
   isolate_test_results.each do |row|
-    json[:isolate_test_results] << row.values
+    json[:isolate_test_results] << pdb.stringify_times(row.values)
   end
  
   File.open(task.name, "w") { |f| JSON.dump(json, f) }
