@@ -1,4 +1,10 @@
-# PathogenDB genome comparison
+# pathoSPOT-compare
+
+This is the comparative genomics pipeline for PathoSPOT, the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
+
+You run this pipeline on a set of sequenced pathogen genomes, annotated in an associated relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized in [pathoSPOT-visualize][]
+
+[pathoSPOT-visualize]: (https://github.com/powerpak/pathospot-visualize)
 
 ## Requirements
 
@@ -119,7 +125,7 @@ Variable             | Required by                           | Default | Purpose
 `GBK`                | `parsnp`                              | (none)  | Specify a reference genbank file for parsnp. Overrides `REF` above.
 `MASH_CUTOFF`        | `parsnp`                              | 0.02    | Create clusters of this maximum diameter in mash distance units before running parsnp
 `MAX_CLUSTER_SIZE`   | `parsnp`                              | 100     | Do not attempt to use parsnp on more than this number of input sequences
-`DISTANCE_THRESHOLD` | `heatmap` `parsnp`                    | 10      | The default SNP threshold that will be used for clustering the heatmap in [pathogendb-viz][]
+`DISTANCE_THRESHOLD` | `heatmap` `parsnp`                    | 10      | The default SNP threshold that will be used for clustering the heatmap in [pathoSPOT-visualize][]
 `IGB_DIR`            | `heatmap` `parsnp`                    | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB`
 `PATHOGENDB_URI`     | `heatmap` `parsnp`                    | (none)  | How to connect to the PathogenDB database. Must be formatted as `sqlite://relative/path/to/pathogen.db` or `mysql2://user:pass@host/database`
 
@@ -163,17 +169,15 @@ This task requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `L
 
 #### heatmap
 
-`rake heatmap` builds off of the SNV components of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathogendb-viz][].
+`rake heatmap` builds off of the SNV components of the `sv_snv` output by creating a node-link file with SNV distances between all of the input genomes.  This is then saved to a JSON file that can be used as the input for the heatmap visualization in [pathoSPOT-visualize][].
 
-Note that this task requires use of `IN_QUERY` instead of the simpler `IN_FOFN` approach to selecting input genomes, because it expects metadata (date, location, MLST, etc.) to be queriable in PathogenDB for each of the genomes. This data is needed by [pathogendb-viz][] in order to draw the corresponding parts of the visualization.
-
-[pathogendb-viz]: (https://github.com/powerpak/pathogendb-viz)
+Note that this task requires use of `IN_QUERY` instead of the simpler `IN_FOFN` approach to selecting input genomes, because it expects metadata (date, location, MLST, etc.) to be queriable in PathogenDB for each of the genomes. This data is needed by [pathoSPOT-visualize][] in order to draw the corresponding parts of the visualization.
 
 #### parsnp
 
 FIXME: `rake parsnp` ... should be documented.
 
-In brief, it produces similar output to `rake heatmap` for use with [pathogendb-viz][], but uses parsnp instead of MUMmer to calculate SNV distances between the sequences.
+In brief, it produces similar output to `rake heatmap` for use with [pathoSPOT-visualize][], but uses parsnp instead of MUMmer to calculate SNV distances between the sequences.
 
 In order for parsnp to complete in a reasonable amount of time and with acceptable core genome sizes (e.g., >50%), you may specify `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune a preclustering step that is done with [mash][]. Clusters up to `MASH_CUTOFF` units in diameter are created, with the size of each cluster capped at `MAX_CLUSTER_SIZE`. Parsnp will be run separately on each cluster and distances remerged into the final output.
 
