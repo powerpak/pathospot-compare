@@ -44,25 +44,31 @@ class PathogenDBCreator < PathogenDBClient
     },
     {
       table: :tIsolateTests,
-      match_on: :eRAP_ID
+      match_on: :eRAP_ID,
+      and_where: "test_date > '2000-01-01 00:00:00'", 
+      keep_cols: [:test_ID, :eRAP_ID, :test_date, :hospital_ID, :procedure_name, :collection_unit,
+          :transfer_to, :encounter_type, :age, :sex]
     },
     {
       table: :tIsolateTestResults,
       match_on: :eRAP_ID,
       # With join_for_match_on:, a left join is performed before attempting to match match_on: with 
       # the assembly data
-      join_for_match_on: [:tIsolateTests, :test_ID => :tIsolateTestResults__test_ID]
+      join_for_match_on: [:tIsolateTests, :test_ID => :tIsolateTestResults__test_ID],
+      keep_cols: [:result_ID, :test_ID, :test_result, :description, :organism_ID, :isolate_ID]
     }
   ]
   
   COLUMNS_TO_DEIDENTIFY = {
     pt_ids: [:tIsolates__eRAP_ID, :tPatientEncounter__eRAP_ID, :tIsolateTests__eRAP_ID],
-    datetimes: [:tIsolates__order_date, :tPatientEncounter__start_date, :tPatientEncounter__end_date],
-    dates: [:tIsolateTests__test_date],
+    datetimes: [:tIsolates__order_date, :tPatientEncounter__start_date, :tPatientEncounter__end_date,
+        :tIsolateTests__test_date],
+    dates: [],
     units: [
       [:tIsolates__hospital_ID, :tIsolates__collection_unit], 
       [:tPatientEncounter__hospital_ID, :tPatientEncounter__department_name], 
-      [:tPatientEncounter__hospital_ID, :tPatientEncounter__transfer_to]
+      [:tPatientEncounter__hospital_ID, :tPatientEncounter__transfer_to],
+      [:tIsolateTests__hospital_ID, :tIsolateTests__collection_unit]
     ]
   }
   
@@ -81,6 +87,9 @@ class PathogenDBCreator < PathogenDBClient
           table_data = table_data.select(*columns).left_join(*spec[:join_for_match_on])
         end
         table_data = table_data.where(match_on => from_data.select_map(match_on).uniq)
+      end
+      if spec[:and_where]
+        table_data = table_data.where(spec[:and_where])
       end
       copy_table_structure!(from_db, spec[:table]) unless @db.tables.include?(spec[:table])
       @db[spec[:table]].multi_insert(table_data.all)
