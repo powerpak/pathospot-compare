@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 gem "rake", "~>10.5.0"
-gem "mysql2", "~>0.4.4"
+gem "mysql2", "~>0.5.2"
 gem "sqlite3", "~>1.3.13"
 gem "sequel", "~>4.30.0"
 gem "bio", "~>1.5.0"
