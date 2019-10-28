@@ -1,7 +1,7 @@
 #!/bin/bash
 
 module unload ruby
-module load ruby
+module load ruby/2.2.0
 
 # You need to configure this with a connection string for the PathogenDB database
 export PATHOGENDB_URI="mysql2://user:pass@host/database"
