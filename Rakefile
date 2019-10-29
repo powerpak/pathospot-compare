@@ -229,7 +229,6 @@ desc "Generates a graph of tasks, intermediate files and their dependencies from
 task :graph do
   # The unflatten step helps with layout; see http://www.graphviz.org/pdf/unflatten.1.pdf
   system <<-SH
-    module load graphviz
     OUT_PREFIX=OUT_PREFIX rake -f #{Shellwords.escape(__FILE__)} -P \
         | #{REPO_DIR}/scripts/rake-prereqs-dot.rb --prune #{REPO_DIR} --replace-with REPO_DIR \
         | unflatten -f -l5 -c 3 \
@@ -341,9 +340,6 @@ file "#{OUT_PREFIX}_snp_tree.newick" => ["RAxML_marginalAncestralStates.#{OUT_PR
   LSF.set_out_err("log/mugsy_snp_tree.log", "log/mugsy_snp_tree.err.log")
   LSF.job_name "#{OUT_PREFIX}_snp_tree"
   LSF.bsub_interactive <<-SH
-    module load python/2.7.6
-    module load py_packages/2.7
-    module load mummer/3.23
     #{REPO_DIR}/scripts/computeSNPTree.py "#{nlr_tree}" "#{mas_file}.fa" "#{OUT_PREFIX}_1.fa-gb.fasta" \
         > "#{OUT_PREFIX}_snp_tree.newick"
     sed 's/ROOT\:1.00000//' "#{OUT_PREFIX}_snp_tree.newick" > "#{OUT_PREFIX}_snp_tree.newick1"
@@ -379,7 +375,6 @@ file "RAxML_bestTree.#{OUT_PREFIX}.pdf" => "RAxML_bestTree.#{OUT_PREFIX}" do |t|
   
   tree_file = "RAxML_bestTree.#{OUT_PREFIX}".shellescape
   system <<-SH
-    module load R/3.1.0
     R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}
   SH
 end
@@ -389,7 +384,6 @@ file "#{OUT_PREFIX}_snp_tree.newick.pdf" => "#{OUT_PREFIX}_snp_tree.newick" do |
   
   tree_file = "#{OUT_PREFIX}_snp_tree.newick".shellescape
   system <<-SH
-    module load R/3.1.0
     R --no-save -f #{REPO_DIR}/scripts/plot_phylogram.R --args #{tree_file}
   SH
 end
@@ -548,14 +542,12 @@ rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| [g[:filt_path], g[
   output = task.name.sub(/\.delta$/, '')
   
   system <<-SH
-    module load mummer/3.23
     nucmer -p #{output} #{genomes[0][:filt_path].shellescape} #{genomes[1][:filt_path].shellescape}
   SH
 end
 
 rule '.filtered-delta' => '.delta' do |task|  
   system <<-SH
-    module load mummer/3.23
     delta-filter -r -q #{task.source.shellescape} > #{task.name.shellescape}
   SH
 end
@@ -566,7 +558,6 @@ rule %r{(\.snv\.bed|\.snps\.count)$} => proc{ |n| n.sub(%r{(\.snv\.bed|\.snps\.c
   bed_file = task.name.sub(/(\.snv\.bed|\.snps\.count)$/, '.snv.bed')
   
   system <<-SH or abort
-    module load mummer/3.23
     show-snps -IHTClr #{task.source.shellescape} > #{snps_file.shellescape}
   SH
   
@@ -638,9 +629,6 @@ file HEATMAP3_SNV_JSON_FILE do |task| #=> SNV_COUNT_FILES do |task| #FIXME
   mkdir_p "#{OUT}/heatmap_wd"
   paths = IN_PATHS.map{ |f| f.strip.shellescape }.join(' ')
   system <<-SH or abort
-    module load python/2.7.6
-    module load py_packages/2.7
-    module load mummer/3.23
     python #{REPO_DIR}/scripts/calculate_snvs.py --path_to_mash #{MASH_DIR}/mash --path_to_parsnp #{HARVEST_DIR}/parsnp --path_to_harvest #{HARVEST_DIR}/harvesttools --working_dir #{OUT}/heatmap_wd --output #{HEATMAP_SNV_JSON_FILE} #{paths}
   SH
 end
@@ -710,8 +698,6 @@ MAX_CLUSTER_SIZE = ENV['MAX_CLUSTER_SIZE']
 
 file PARSNP_CLUSTERS_TSV => "#{OUT_PREFIX}.repeat_mask.msh" do |t|
   system <<-SH or abort
-    module load python/2.7.6
-    module load py_packages/2.7
     python #{REPO_DIR}/scripts/mash_clusters.py \
         --path_to_mash #{MASH_DIR}/mash \
         #{MASH_CLUSTER_NOT_GREEDY && "--not_greedy"} \
@@ -818,8 +804,6 @@ rule %r{/parsnp\.clean\.nwk$} => proc{ |n| n.sub(%r{\.clean\.nwk$}, ".ggr") } do
     system "#{HARVEST_DIR}/harvesttools -i #{t.source.shellescape} -N #{nwk.shellescape}" or abort
   end
   system <<-SH or abort
-    module load python/2.7.6
-    module load py_packages/2.7
     python #{REPO_DIR}/scripts/cleanup_parsnp_newick.py \
       #{nwk.shellescape} \
       #{t.name.shellescape} \
@@ -833,8 +817,6 @@ end
 rule %r{/parsnp\.tsv$} => proc{ |n| parsnp_tsv_to_parsnp_outputs(n) } do |t|
   # Converts a parsnp VCF file into a tab-separated values table of SNV distances
   system <<-SH or abort
-    module load python/2.7.6
-    module load py_packages/2.7
     python #{REPO_DIR}/scripts/parsnp2table.py \
       #{t.sources.first.shellescape} \
       #{t.name.shellescape} \
@@ -862,8 +844,6 @@ file PARSNP_VCFS_NPZ_FILE => parsnp_vcfs_npz_prereqs do |t|
     transl_table = pdb.genetic_code_table && pdb.genetic_code_table.to_s.shellescape
     # NOTE: Because of NumPy <-> python 2.7.x bugs, this script uniquely requires python 2.7.14 !!!
     system <<-SH or abort
-      module load python/2.7.14
-      module load py_packages/2.7
       python #{REPO_DIR}/scripts/parsnp_vcfs_to_npz.py \
           #{input_parsnp_vcfs.map(&:shellescape).join(' ')} \
           --fastas #{tmp}/in_paths.txt \

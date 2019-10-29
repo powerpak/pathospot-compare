@@ -1,8 +1,18 @@
 #!/bin/bash
 
-module unload ruby
+# Load conda environment for comparison pipeline
+module purge all
+unset PYTHONPATH
+unset PERL5LIB
+unset R_LIBS
+module load anaconda2
+source activate pathospot-compare
+export PATH=`echo $PATH | tr ":" "\n" | grep -vP "^${ANACONDAHOME}bin$" | tr "\n" ":"` # Remove path to anaconda bin at this point to avoid python issues
+module load openssl/1.0.2 # Work around missing openssl library on chimera
+module load libpng/12     # Work around missing libpng on chimera
 module load ruby/2.2.0
 module load mysql/5.1.72
+module load zlib
 
 # You need to configure this with a connection string for the PathogenDB database
 export PATHOGENDB_URI="mysql2://user:pass@host/database"
