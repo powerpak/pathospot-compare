@@ -83,8 +83,8 @@ task :env do
   STDERR.puts "Output directory: #{OUT}"
   mkdir_p File.join(REPO_DIR, "vendor")
   
-  sc_orga_scratch = "/sc/orga/scratch/#{ENV['USER']}"
-  ENV['TMP'] ||= Dir.exists?(sc_orga_scratch) ? sc_orga_scratch : "/tmp"
+  sc_hydra_scratch = "/sc/hydra/scratch/#{ENV['USER']}"
+  ENV['TMP'] ||= Dir.exists?(sc_hydra_scratch) ? sc_hydra_scratch : "/tmp"
   ENV['PERL5LIB'] ||= "/usr/bin/perl5.10.1"
 end
 
