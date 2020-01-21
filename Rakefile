@@ -762,7 +762,11 @@ rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
   elsif ENV['REF']
     referenceOrGenbank = "-r #{ENV['REF'].shellescape}"
   else
-    referenceOrGenbank = "-r " + get_first_order_date_fasta(t.sources, pdb).shellescape
+    if ENV['PATHOGENDB_ADAPTER']
+      referenceOrGenbank = "-r ! "
+    else
+      referenceOrGenbank = "-r " + get_first_order_date_fasta(t.sources, pdb).shellescape
+    end
   end
   
   unless t.sources.map{ |f| File.dirname(f) }.uniq.size == 1
