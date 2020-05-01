@@ -8,7 +8,7 @@ The pipeline is run on sequenced pathogen genomes, for which metadata (dates, lo
 
 ## Requirements
 
-Although designed for Linux, users of other operating systems can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
+This pipeline runs on Linux; however, Mac and Windows users can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
 
 [MUMmer]: http://mummer.sourceforge.net/
 
@@ -17,8 +17,6 @@ Although designed for Linux, users of other operating systems can use [Vagrant][
 Download and install Vagrant using any of the [official installers][vagrant] for Mac, Windows, or Linux. Vagrant supports both local virtualization via VirtualBox and cloud hosts (e.g., AWS).
 
 [vagrant]: https://www.vagrantup.com/downloads.html
-
-#### Local virtual machine on VirtualBox
 
 The fastest way to get started with Vagrant is to [install VirtualBox][virtualbox]. Then, clone this repository to a directory, `cd` into it, and run the following:
 
@@ -35,17 +33,17 @@ The next time you want to use the pipeline in this VM, you won't need to start a
 [virtualbox]: https://www.virtualbox.org/wiki/Downloads
 [deb]: https://www.debian.org/releases/stretch/
 
-#### Hosted on AWS
+### Hosted on AWS
 
 Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. See [README-vagrant-aws.md](https://github.com/powerpak/pathospot-compare/blob/master/README-vagrant-aws.md).
 
 ### Minerva/Chimera (Mount Sinai users only)
 
-For particular instructions for getting started on the Chimera nodes of the Minerva computing environment, see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
+Mount Sinai users getting started on the Minerva computing environment can use an included script to setup an appropriate environment on a Chimera node (without needing vagrant); for more information see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
 
 ### Installing directly on Linux (advanced users)
 
-You may be able to install prerequisites directly on a Linux machine by editing `scripts/bootstrap.debian-stretch.sh` to fit your distro's needs. As the name suggests, it was designed for [Debian 9 "Stretch"][deb], but will likely run with minor changes on most Debian-based distros, including Ubuntu and Mint. Note that this script must be run as root, expects the pipeline will be run by `$DEFAULT_USER` i.e. `UID=1000`, and assumes this repo is already checked out into `/vagrant`.
+You may be able to install prerequisites directly on a Linux machine by editing `scripts/bootstrap.debian-stretch.sh` to fit your distro's needs. As the name suggests, this script was designed for [Debian 9 "Stretch"][deb], but will likely run with minor changes on most Debian-based distros, including Ubuntu and Mint. Note that this script must be run as root, expects the pipeline will be run by `$DEFAULT_USER` i.e. `UID=1000`, and assumes this repo is already checked out into `/vagrant`.
 
 ## Usage
 
