@@ -53,36 +53,17 @@ Rake, aka [ruby make][], is used to kick off the pipeline as follows. Certain ta
     $ rake $TASK_1 $TASK_2       # run tasks named $TASK_1 and $TASK_2
     $ FOO="bar" rake $TASK_1     # run $TASK_1 with variable FOO set to "bar"
 
-**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`. If you are using Vagrant, this is configured to happen automatically (in `~/.profile`).
+**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`. If you are using Vagrant, this happens automatically.
 
 [ruby make]: https://github.com/ruby/rake
 
-### Example dataset
+### Quickstart
 
-If you are using Vagrant, running the pipeline on the example dataset is as simple as:
+If you used Vagrant to get started, it automatically downloads an example dataset for MRSA isolates at Mount Sinai to `example/`.
+
+To run a full analysis on this dataset, type:
 
     $ IN_QUERY="1=1" rake parsnp epi encounters
-
-### Environment variables
-
-Certain tasks within the pipeline require you to specify some extra information as an environment variable.  You can do this by either editing them into `scripts/env.sh` and re-running `source scripts/env.sh`, or you can prepend them to the `rake` invocation, e.g.:
-
-    $ IN_FOFN=LB_genomes.fofn rake mugsy
-
-If a required environment variable isn't present when a task is run and there is no default value, rake will abort with an error message.
-
-Variable             | Required by                           | Default | Purpose
----------------------|---------------------------------------|---------|-----------------------------------
-`OUT`                | all tasks                             | ./out   | This is where your interim and completed files are saved
-`IN_QUERY`           | `parsnp`                              | (none)  | An SQL `WHERE` clause that dynamically selects FASTAs that were assembled and saved in `IGB_DIR` via a query to the `tAssemblies` table in PathogenDB's MySQL database. Requires `IGB_DIR` and `PATHOGENDB_URI` to be configured appropriately. An example usage that selects *C. difficile* assemblies would be `taxonomy_ID = 1496 AND assembly_data_link LIKE 'C_difficile_%'` **Important:** If set, this overrides `IN_FOFN`.
-`OUT_PREFIX`         | all tasks                             | out     | This prefix will be prepended to output filenames (so you can track files generated for each invocation)
-`REF`                | `parsnp`                              | (none)  | Specify a reference genome for parsnp. If not specified, the oldest genome by `order_date` within each mash cluster is used as the reference.
-`GBK`                | `parsnp`                              | (none)  | Specify a reference genbank file for parsnp. Overrides `REF` above.
-`MASH_CUTOFF`        | `parsnp`                              | 0.02    | Create clusters of this maximum diameter in mash distance units before running parsnp
-`MAX_CLUSTER_SIZE`   | `parsnp`                              | 100     | Do not attempt to use parsnp on more than this number of input sequences
-`DISTANCE_THRESHOLD` | `parsnp`                              | 10      | The default SNP threshold that will be used for clustering the heatmap in [pathoSPOT-visualize][]
-`IGB_DIR`            | `parsnp`                              | (none)  | An IGB Quickload directory that contains assemblies saved into PathogenDB`
-`PATHOGENDB_URI`     | `parsnp`                              | (none)  | How to connect to the PathogenDB database. Must be formatted as `sqlite://relative/path/to/pathogen.db` or `mysql2://user:pass@host/database`
 
 ### Tasks
 

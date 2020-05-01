@@ -20,7 +20,8 @@ directory MUGSY_DIR
 file "#{MUGSY_DIR}/mugsy" do
   Dir.chdir(File.dirname(MUGSY_DIR)) do
     system <<-SH or abort
-      curl -L -o mugsy.tar.gz 'http://sourceforge.net/projects/mugsy/files/mugsy_x86-64-v1r2.2.tgz/download'
+      curl -L -s -o mugsy.tar.gz \
+          'http://sourceforge.net/projects/mugsy/files/mugsy_x86-64-v1r2.2.tgz/download'
       tar xvzf mugsy.tar.gz
       mv mugsy_x86-64-v1r2.2/* '#{MUGSY_DIR}' && \
           rm -rf mugsy_x86-64-v1r2.2 mugsy.tar.gz
@@ -35,7 +36,8 @@ directory CLUSTALW_DIR
 file "#{CLUSTALW_DIR}/clustalw2" do
   Dir.chdir(File.dirname(CLUSTALW_DIR)) do
     system <<-SH or abort
-      curl -L -o clustalw.tar.gz 'http://www.clustal.org/download/current/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz'
+      curl -L -s -o clustalw.tar.gz \
+          'http://www.clustal.org/download/current/clustalw-2.1-linux-x86_64-libcppstatic.tar.gz'
       tar xvzf clustalw.tar.gz
       mv clustalw-2.1-linux-x86_64-libcppstatic/* #{CLUSTALW_DIR.shellescape} && \
           rm -rf clustalw-2.1-linux-x86_64-libcppstatic clustalw.tar.gz
@@ -50,7 +52,7 @@ directory RAXML_DIR
 file "#{RAXML_DIR}/raxmlHPC" do
   Dir.chdir(File.dirname(CLUSTALW_DIR)) do
     system <<-SH or abort
-      curl -L -o raxml.tar.gz 'https://github.com/stamatak/standard-RAxML/archive/v8.0.2.tar.gz'
+      curl -L -s -o raxml.tar.gz 'https://github.com/stamatak/standard-RAxML/archive/v8.0.2.tar.gz'
       tar xvzf raxml.tar.gz && \
           rm raxml.tar.gz
     SH
@@ -69,7 +71,7 @@ directory MAUVE_DIR
 file "#{MAUVE_DIR}/linux-x64/progressiveMauve" do
   Dir.chdir(File.dirname(MAUVE_DIR)) do
     system <<-SH or abort
-      curl -L -o mauve.tar.gz 'http://darlinglab.org/mauve/downloads/mauve_linux_2.4.0.tar.gz'
+      curl -L -s -o mauve.tar.gz 'http://darlinglab.org/mauve/downloads/mauve_linux_2.4.0.tar.gz'
       tar xvzf mauve.tar.gz
       mv mauve_2.4.0/* #{MAUVE_DIR.shellescape} && \
           rm -rf mauve.tar.gz mauve_linux_2.4.0.tar.gz
@@ -83,7 +85,7 @@ directory GRIMM_DIR
 file "#{GRIMM_DIR}/grimm" do
   Dir.chdir(File.dirname(GRIMM_DIR)) do
     system <<-SH or abort
-      curl -L -o grimm.tar.gz 'http://grimm.ucsd.edu/DIST/GRIMM-2.01.tar.gz'
+      curl -L -s -o grimm.tar.gz 'http://grimm.ucsd.edu/DIST/GRIMM-2.01.tar.gz'
       tar xvzf grimm.tar.gz
       mv GRIMM-2.01/* #{GRIMM_DIR.shellescape} && \
           rm -rf GRIMM-2.01 grimm.tar.gz && \
@@ -99,7 +101,8 @@ directory GBLOCKS_DIR
 file "#{GBLOCKS_DIR}/Gblocks" do
   Dir.chdir(File.dirname(GBLOCKS_DIR)) do
     system <<-SH or abort
-      curl -L -o gblocks.tar.gz 'http://molevol.cmima.csic.es/castresana/Gblocks/Gblocks_Linux64_0.91b.tar.Z'
+      curl -L -s -o gblocks.tar.gz \
+          'http://molevol.cmima.csic.es/castresana/Gblocks/Gblocks_Linux64_0.91b.tar.Z'
       tar xvzf gblocks.tar.gz
       mv Gblocks_0.91b/* #{GBLOCKS_DIR.shellescape} && \
           rm -rf gblocks.tar.gz Gblocks_0.91b
@@ -329,7 +332,6 @@ SNV_FILES = []
 SV_SNV_FILES = []
 # Setup, as dependencies for this task, all permutations of IN_FOFN genome names
 directory "#{OUT_PREFIX}.sv_snv"
-directory "#{OUT_PREFIX}.contig_filter"
 
 IN_PATHS && IN_PATHS.map{ |path| File.basename(path).sub(/\.\w+$/, '') }.each do |genome_name|
   directory "#{OUT_PREFIX}.sv_snv/#{genome_name}"
@@ -356,11 +358,6 @@ def genomes_from_task_name(task_name)
     g[:filt_path] = "#{OUT_PREFIX}.contig_filter/#{filename.sub(%r{\.(fa|fasta)$}, '.filt.\\1')}"
   end
   genomes
-end
-
-def filtered_to_unfiltered(filtered_path)
-  name = File.basename(filtered_path).sub(%r{\.filt\.(fa|fasta)$}, '.\\1')
-  IN_PATHS.find{ |path| path =~ /#{name}$/ }
 end
 
 ###
@@ -403,12 +400,6 @@ end
 ###
 # Creating .snv.bed files from pairwise MUMmer (nucmer) alignments
 ###
-
-# This rule creates a filtered FASTA file from the original that drops any contigs flagged as "merged" or "garbage"
-rule %r{\.filt\.(fa|fasta)$} => proc{ |n| filtered_to_unfiltered(n) } do |task|
-  mkdir_p File.dirname(task.name)
-  filter_fasta_by_entry_id(task.source, task.name, /_[mg]_/, :invert => true)
-end
 
 rule '.delta' => proc{ |n| genomes_from_task_name(n).map{ |g| [g[:filt_path], g[:out_dir]] }.flatten.uniq } do |task|
   genomes = genomes_from_task_name(task.name)

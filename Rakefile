@@ -105,7 +105,8 @@ directory HARVEST_DIR
 file "#{HARVEST_DIR}/parsnp" do
   Dir.chdir(File.dirname(HARVEST_DIR)) do
     system <<-SH or abort
-      curl -L -o Harvest-Linux64-v1.1.2.tar.gz 'https://github.com/marbl/harvest/releases/download/v1.1.2/Harvest-Linux64-v1.1.2.tar.gz'
+      curl -L -s -o Harvest-Linux64-v1.1.2.tar.gz \
+          'https://github.com/marbl/harvest/releases/download/v1.1.2/Harvest-Linux64-v1.1.2.tar.gz'
       tar xvzf Harvest-Linux64-v1.1.2.tar.gz
       mv Harvest-Linux64-v1.1.2/* #{HARVEST_DIR.shellescape} && \
           rm -rf "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2" "#{REPO_DIR}/vendor/Harvest-Linux64-v1.1.2.tar.gz"
@@ -120,7 +121,8 @@ directory MASH_DIR
 file "#{MASH_DIR}/mash" do
   Dir.chdir(File.dirname(MASH_DIR)) do
     system <<-SH or abort
-      curl -L -o mash-Linux64-v2.1.tar 'https://github.com/marbl/Mash/releases/download/v2.1/mash-Linux64-v2.1.tar'
+      curl -L -s -o mash-Linux64-v2.1.tar \
+          'https://github.com/marbl/Mash/releases/download/v2.1/mash-Linux64-v2.1.tar'
       tar xvf mash-Linux64-v2.1.tar
       mv mash-Linux64-v2.1/* #{MASH_DIR.shellescape} && \
           rm -rf mash-Linux64-v2.1.tar mash-Linux64-v2.1
@@ -132,10 +134,11 @@ task :example_data => [:env, EXAMPLE_DIR, "#{EXAMPLE_DIR}/mrsa.db", "#{EXAMPLE_D
 directory EXAMPLE_DIR
 directory "#{EXAMPLE_DIR}/igb" => "#{EXAMPLE_DIR}/mrsa.db"
 file "#{EXAMPLE_DIR}/mrsa.db" do
+  $stderr.puts "Downloading example dataset from pathospot.org..."
   Dir.chdir(EXAMPLE_DIR) do
     system <<-SH or abort
-      curl -L -o mrsa.tar.gz 'https://pathospot.org/data/mrsa.tar.gz'
-      tar xvf mrsa.tar.gz && rm mrsa.tar.gz
+      curl -L -s -o mrsa.tar.gz 'https://pathospot.org/data/mrsa.tar.gz'
+      tar xvzf mrsa.tar.gz && rm mrsa.tar.gz
     SH
   end
 end
@@ -179,12 +182,25 @@ task :parsnp_check do
   abort "FATAL: Task parsnp requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI
 end
 
+# This rule creates a filtered FASTA file from the original that drops any contigs flagged as "merged" or "garbage"
+def filtered_to_unfiltered(filtered_path)
+  name = File.basename(filtered_path).sub(%r{\.filt\.(fa|fasta)$}, '.\\1')
+  IN_PATHS.find{ |path| path =~ /#{name}$/ }
+end
+directory "#{OUT_PREFIX}.contig_filter"
+rule %r{\.filt\.(fa|fasta)$} => proc{ |n| filtered_to_unfiltered(n) } do |t|
+  mkdir_p File.dirname(t.name)
+  filter_fasta_by_entry_id(t.source, t.name, /_[mg]_/, :invert => true)
+end
+
+# This rule creates another FASTA file with tandem repeats masked by sequences of 'n' (any) nucleotide
 def repeat_masked_prereqs(masked_path)
   name = File.basename(masked_path).sub(%r{\.repeat_mask\.(fa|fasta)$}, '.filt.\\1')
   "#{OUT_PREFIX}.contig_filter/#{name}"
 end
+directory "#{OUT_PREFIX}.repeat_mask"
 rule %r{^#{OUT_PREFIX}.repeat_mask/.+\.(fa|fasta)$} => proc{ |n| repeat_masked_prereqs(n) } do |t|
-  mkdir_p "#{OUT_PREFIX}.repeat_mask"
+  mkdir_p File.dirname(t.name)
   fasta_mask_repeats(t.source, t.name)
 end
 
