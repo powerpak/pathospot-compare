@@ -6,12 +6,17 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", path: "scripts/bootstrap.debian-stretch.sh"
   
+  config.vm.provider :virtualbox do |v|
+    v.customize ["modifyvm", :id, "--memory", 4096]
+  end
+  
   config.vm.provider :aws do |aws, override|
     override.vm.box = "aws-dummy"
 
     aws.region = "us-east-1"
     aws.ami = "ami-0f9e7e8867f55fd8e"
     aws.security_groups = ["allow-ssh"]
+    aws.instance_type = "m3.medium"  # => m3 is being phased out; could be upgraded to m5.large
 
     override.ssh.username = "admin"
     aws.keypair_name = "default"

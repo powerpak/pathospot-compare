@@ -13,11 +13,12 @@ apt-get install -y ruby2.3 ruby2.3-dev curl build-essential
 apt-get install -y default-libmysqlclient-dev
 apt-get install -y python-pip python-dev
 apt-get install -y graphviz
+apt-get install -y libsqlite3-dev
 gem install bundler
 gem install rake
 
 # Install mummer
-cd /tmp
+cd /opt
 curl -L -s -o mummer.tar.gz \
   'https://sourceforge.net/projects/mummer/files/mummer/3.23/MUMmer3.23.tar.gz/download'
 tar xvzf mummer.tar.gz
@@ -27,8 +28,6 @@ cp annotate combineMUMs delta-filter dnadiff exact-tandems gaps mapview \
   mgaps mummer mummerplot nucmer nucmer2xfig promer repeat-match run-mummer1 \
   run-mummer3 show-aligns show-coords show-diff show-snps show-tiling \
   /usr/local/bin
-cd /tmp
-rm -rf mummer.tar.gz MUMmer3.23
 
 # Fetch gems required by bundler
 cd /vagrant
