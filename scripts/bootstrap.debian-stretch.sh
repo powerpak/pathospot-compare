@@ -39,6 +39,9 @@ pip install -r requirements.txt
 # Install the essential dependencies for the pipeline
 sudo -u \#$DEFAULT_UID rake check
 
+# Download and decompress the example dataset
+sudo -u \#$DEFAULT_UID rake example_data
+
 # Modify the default user's ~/.profile to save a few steps upon `vagrant ssh`ing
 echo >> "$DEFAULT_HOME/.profile"
 echo "cd /vagrant" >> "$DEFAULT_HOME/.profile"

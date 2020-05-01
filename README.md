@@ -37,59 +37,11 @@ The next time you want to use the pipeline in this VM, you won't need to start a
 
 #### Hosted on AWS
 
-Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
-
-    $ vagrant plugin install vagrant-aws
-    $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
-
-Then configure your AWS account on your machine using their command-line tool. It will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more information on creating an AWS account and obtaining credentials, [see this tutorial][aws].
-
-[aws]: (https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration)
-
-    $ pip install awscli
-    $ aws configure
-
-You must then create an SSH keypair for EC2...
-
-    $ aws ec2 create-key-pair --key-name default > ~/.aws/default.pem
-    $ chmod 0400 ~/.aws/default.pem
-    $ sed -i -e $'/-----BEGIN/s/.*\t//' ~/.aws/default.pem
-    $ sed -i -e $'/-----END/s/\t.*//' ~/.aws/default.pem
-
-...and a security group—we'll call it `allow-ssh`—that allows inbound SSH traffic. Here, we allow traffic from any IP address, but you could choose a narrower range, if you know your public IP address.
-
-    $ aws ec2 create-security-group --group-name allow-ssh \
-        --description "allows all inbound SSH traffic"
-    $ aws ec2 authorize-security-group-ingress --group-name allow-ssh \
-        --protocol tcp --port 22 --cidr 0.0.0.0/0
-
-Finally, you can boot and provision your AWS EC2 machine with Vagrant.
-
-    $ vagrant up --provider=aws
-
-Vagrant will spend a few minutes configuring and building the VM. Once it's done, run
-
-    $ vagrant ssh
-
-You should see the bash prompt `admin@ip-...:/vagrant$`, and may proceed to [**Usage**](#usage) below.
-
-The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant halt` to exit, and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. See [README-vagrant-aws.md](https://github.com/powerpak/pathospot-compare/blob/master/README-vagrant-aws.md).
 
 ### Minerva/Chimera (Mount Sinai users only)
 
-The pipeline can also access all required software using the module system on Chimera nodes in the [Minerva cluster](https://labs.icahn.mssm.edu/minervalab/). Clone this repository to a directory and `cd` into it. First run the following to set up required Ruby gems and a new conda environment:
-
-    $ scripts/example.MINERVA.prepare-conda.sh
-
-You'll then want to configure your environment:
-
-    $ cp scripts/example.MINERVA.env.sh scripts/env.sh  
-
-The defaults should work for any Minerva user, although you will want to adjust `PATHOGENDB_URI` with the correct MySQL connection string. Then, you can source the script into your shell, which sets up and activates a conda environment ready to run the pipeline:
-
-    $ source scripts/env.sh
-
-When this is complete, you should be able to continue with the steps under [**Usage**](#usage) below.
+For particular instructions for getting started on the Chimera nodes of the Minerva computing environment, see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
 
 ### Installing directly on Linux (advanced users)
 

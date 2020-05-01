@@ -25,6 +25,7 @@ LSF.disable! if ENV['LSF_DISABLE']
 REPO_DIR = File.dirname(__FILE__)
 HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
 MASH_DIR = "#{REPO_DIR}/vendor/mash"
+EXAMPLE_DIR = "#{REPO_DIR}/example"
 
 OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
 IN_QUERY = ENV['IN_QUERY']
@@ -123,6 +124,18 @@ file "#{MASH_DIR}/mash" do
       tar xvf mash-Linux64-v2.1.tar
       mv mash-Linux64-v2.1/* #{MASH_DIR.shellescape} && \
           rm -rf mash-Linux64-v2.1.tar mash-Linux64-v2.1
+    SH
+  end
+end
+
+task :example_data => [:env, EXAMPLE_DIR, "#{EXAMPLE_DIR}/mrsa.db", "#{EXAMPLE_DIR}/igb"]
+directory EXAMPLE_DIR
+directory "#{EXAMPLE_DIR}/igb" => "#{EXAMPLE_DIR}/mrsa.db"
+file "#{EXAMPLE_DIR}/mrsa.db" do
+  Dir.chdir(EXAMPLE_DIR) do
+    system <<-SH or abort
+      curl -L -o mrsa.tar.gz 'https://pathospot.org/data/mrsa.tar.gz'
+      tar xvf mrsa.tar.gz && rm mrsa.tar.gz
     SH
   end
 end
