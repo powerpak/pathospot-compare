@@ -29,7 +29,12 @@ end
 Dir.chdir(File.dirname(__FILE__))
 
 desc "Builds the example dataset in mrsa.db. Default task."
-task :example => ["mrsa.db"]
+task :example => ["mrsa.tar.gz"]
+
+file "mrsa.tar.gz" => ["mrsa.db", :igb_dir] do |t|
+  $stderr.puts "Compressing files into mrsa.tar.gz..."
+  system "tar -czf mrsa.tar.gz mrsa.db igb" or abort
+end
 
 file "mrsa.db" do |t|
   abort "FATAL: building mrsa.db requires IN_QUERY" unless IN_QUERY
@@ -43,6 +48,20 @@ file "mrsa.db" do |t|
   mrsa_db.deidentify!(KEYFILES_PREFIX)
 end
 
-directory "igb"
-## TODO: copy IN_PATHS (at the very least, the .fasta and .bed files) to ./igb 
-##       to provide the example set of MRSA genomes
+## Copy IN_PATHS (at the very least, the .fasta and .bed files) to ./igb 
+## to provide the example set of MRSA genomes
+
+IN_PATHS.each do |f|
+  fasta_path = f[IGB_DIR.size..-1].sub(/^\//, '')
+  bed_path = fasta_path.sub(/\.fasta$/, '.bed')
+  directory "igb/#{File.dirname(fasta_path)}"
+  task :igb_dir => "igb/#{fasta_path}"
+  task :igb_dir => "igb/#{bed_path}"
+end
+
+rule ".fasta" => proc{ |f| File.dirname(f) } do |t|
+  cp "#{IGB_DIR}/#{t.name[4..-1]}", t.name
+end
+rule ".bed" => proc{ |f| File.dirname(f) } do |t|
+  cp "#{IGB_DIR}/#{t.name[4..-1]}", t.name
+end

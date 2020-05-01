@@ -7,5 +7,8 @@ out
 vendor/
 scripts/env.sh
 
-# don't check in the example database until anonymization is done
+# don't check in the example data; it will be hosted separatedly
 example/mrsa.db
+example/mrsa.tar.gz
+example/igb
+example/key.*
