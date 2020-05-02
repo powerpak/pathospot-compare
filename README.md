@@ -55,7 +55,7 @@ Rake, aka [ruby make][], is used to kick off the pipeline as follows. Certain ta
     $ rake $TASK_1 $TASK_2       # run tasks named $TASK_1 and $TASK_2
     $ FOO="bar" rake $TASK_1     # run $TASK_1 with variable FOO set to "bar"
 
-**Important:** When firing up the pipeline in a new shell, always remember to `source scripts/env.sh` _before_ running `rake`. If you are using Vagrant, this happens automatically.
+**Important:** If you are not using Vagrant, whenever firing up the pipeline in a new shell, you must always run `source scripts/env.sh` _before_ running `rake`. The Vagrant environment does this automatically by running that script within all new login shells.
 
 [ruby make]: https://github.com/ruby/rake
 
@@ -76,8 +76,16 @@ which runs the three main tasks (`parsnp`, `epi`, and `encounters`). When the pi
 
 These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. Simply open <http://localhost:8888/> in your web browser to see the finished product.
 
+If you want to copy the output files outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] on another machine, use [vagrant-scp][] as follows from your _host_ machine:
+
+	$ vagrant plugin install vagrant-scp
+	$ vagrant scp default:/vagrant/out/*.json /destination/on/host
+	$ vagrant scp default:/vagrant/out/*.npz /destination/on/host
+	$ vagrant scp default:/vagrant/out/*.encounters.tsv /destination/on/host
+
 [mrsa.tar.gz]: https://pathospot.org/data/mrsa.tar.gz
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
+[vagrant-scp]: https://github.com/invernizzi/vagrant-scp
 
 ### Rake tasks
 
