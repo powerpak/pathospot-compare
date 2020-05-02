@@ -1,6 +1,6 @@
 ## Getting started on the AWS cloud with vagrant
 
-Vagrant can run this pipeline on the AWS cloud using your AWS credentials. First, ensure [install Vagrant][vagrant] if you don't have it. Then clone this repository to a directory on your development machine and `cd` into it.
+Vagrant can run this pipeline on the AWS cloud using your AWS credentials. First, [install Vagrant][vagrant] if you haven't already. Then clone this repository to a directory on your development machine and `cd` into it.
 
 We have to manually install a specific version of a prerequisite Vagrant plugin `fog-ovirt` because of an incompatibility with the version of Ruby included in Vagrant 2.2.7 (which [will be fixed][fixvagrant] in Vagrant 2.2.8).
 

@@ -32,7 +32,7 @@ Vagrant.configure("2") do |config|
     aws.region = "us-east-1"
     aws.ami = "ami-0f9e7e8867f55fd8e"
     aws.security_groups = ["allow-ssh-http"]
-    aws.instance_type = "m3.medium"  # => m3 is being phased out; could be upgraded to m5.large
+    aws.instance_type = "m5.large"
 
     override.ssh.username = "admin"
     aws.keypair_name = "default"

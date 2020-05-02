@@ -439,7 +439,7 @@ end
 # ==============
 
 ENCOUNTERS_TSV_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.encounters.tsv"
-desc "Download encounters data for the dendro-timeline part of pathogendb-viz"
+desc "Download patient spatiotemporal data for the dendro-timeline visualization"
 task :encounters => [:check, ENCOUNTERS_TSV_FILE]
 
 file ENCOUNTERS_TSV_FILE do |t|
@@ -461,7 +461,7 @@ end
 # =======
 
 HEATMAP_EPI_JSON_FILE = "#{OUT_PREFIX}.#{Date.today.strftime('%Y-%m-%d')}.epi.heatmap.json"
-desc "Download isolate spatiotemporal data for pathogendb-viz"
+desc "Download patient testing and isolate spatiotemporal data"
 task :epi => [:check, HEATMAP_EPI_JSON_FILE]
 
 file HEATMAP_EPI_JSON_FILE do |task|

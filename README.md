@@ -49,7 +49,7 @@ You may be able to install prerequisites directly on a Linux machine by editing 
 
 ## Usage
 
-Rake, aka [ruby make][], is used to kick off the pipeline. Some tasks require certain parameters, which are provided as environment variables (and detailed more below). A quick primer on how to use Rake:
+Rake, aka [Ruby Make][rake], is used to kick off the pipeline. Some tasks require certain parameters, which are provided as environment variables (and detailed more below). A quick primer on how to use Rake:
 
     $ rake -T                    # list the available tasks
     $ rake $TASK_1 $TASK_2       # run the tasks named $TASK_1 and $TASK_2
@@ -57,7 +57,7 @@ Rake, aka [ruby make][], is used to kick off the pipeline. Some tasks require ce
 
 **Important:** If you are not using Vagrant, whenever firing up the pipeline in a new shell, you must always run `source scripts/env.sh` _before_ running `rake`. The Vagrant environment does this automatically via `~/.profile`.
 
-[ruby make]: https://github.com/ruby/rake
+[rake]: https://github.com/ruby/rake
 
 ### Quickstart
 
