@@ -39,7 +39,9 @@ Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. 
 
 ### Minerva/Chimera (Mount Sinai users only)
 
-Mount Sinai users getting started on the Minerva computing environment can use an included script to setup an appropriate environment on a Chimera node (without needing vagrant); for more information see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
+Mount Sinai users getting started on the [Minerva computing environment][minerva] can use an included script to setup an appropriate environment on a Chimera node (without needing vagrant); for more information see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
+
+[minerva]: https://labs.icahn.mssm.edu/minervalab/
 
 ### Installing directly on Linux (advanced users)
 
@@ -59,13 +61,25 @@ Rake, aka [ruby make][], is used to kick off the pipeline as follows. Certain ta
 
 ### Quickstart
 
-If you used Vagrant to get started, it automatically downloads an example dataset for MRSA isolates at Mount Sinai to `example/`.
+If you used Vagrant to get started, it automatically downloads an [example dataset][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are at `example/igb` and the metadata on their collection is in `example/mrsa.db`. Environment variables in `scripts/env.sh` are preset so that the pipeline will run on this data.
 
-To run a full analysis on this dataset, type:
+To run a full analysis, type:
 
     $ IN_QUERY="1=1" rake parsnp epi encounters
 
-### Tasks
+which runs the three main tasks (`parsnp`, `epi`, and `encounters`). When the pipeline is finished, there will be four output files saved into `out/`, which begin with a YYYY-MM-DD date prefix and have the following extensions:
+
+- `.parsnp.heatmap.json` → made by `parsnp`; contains the genomic SNP distance matrix
+- `.parsnp.vcfs.npz` → made by `parsnp`; contains SNP variant data for each genome
+- `.encounters.tsv` → made by `encounters`; contains spatiotemporal data for patients
+- `.epi.heatmap.json` → made by `epi`; contains culture test data (positives and negatives)
+
+These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. Simply open <http://localhost:8888/> in your web browser to see the finished product.
+
+[mrsa.tar.gz]: https://pathospot.org/data/mrsa.tar.gz
+[pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
+
+### Rake tasks
 
 #### parsnp
 

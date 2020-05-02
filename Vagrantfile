@@ -5,9 +5,10 @@ Vagrant.configure("2") do |config|
       rsync__exclude: [".git/", ".bundle/", "out/", "vendor/", "scripts/env.sh"]
 
   config.vm.provision "shell", path: "scripts/bootstrap.debian-stretch.sh"
+  config.vm.network "forwarded_port", guest: 80, host: 8888, auto_correct: true
   
-  config.vm.provider :virtualbox do |v|
-    v.customize ["modifyvm", :id, "--memory", 4096]
+  config.vm.provider :virtualbox do |vbox, override|
+    vbox.customize ["modifyvm", :id, "--memory", 4096]
   end
   
   config.vm.provider :aws do |aws, override|

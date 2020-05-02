@@ -14,6 +14,7 @@ apt-get install -y default-libmysqlclient-dev
 apt-get install -y python-pip python-dev
 apt-get install -y graphviz
 apt-get install -y libsqlite3-dev
+apt-get install -y git
 gem install bundler
 gem install rake
 
@@ -34,7 +35,7 @@ cd /vagrant
 sudo -u \#$DEFAULT_UID bundle install --deployment
 
 # Fetch all the python modules required by the python scripts
-pip install -r requirements.txt
+pip install -r requirements.txt``
 
 # Install the essential dependencies for the pipeline
 sudo -u \#$DEFAULT_UID rake check
@@ -48,3 +49,12 @@ echo "cd /vagrant" >> "$DEFAULT_HOME/.profile"
 echo "if [ ! -f scripts/env.sh ]; then cp scripts/example.env.sh scripts/env.sh; fi" \
   >> "$DEFAULT_HOME/.profile"
 echo "source scripts/env.sh" >> "$DEFAULT_HOME/.profile"
+
+# Download and install pathoSPOT-visualize
+mkdir -p /var/www
+git clone https://github.com/powerpak/pathospot-visualize.git /var/www/html
+cd /var/www/html
+source scripts/bootstrap.debian-stretch.sh
+# Symlink its input data directory directly to this pipeline's default output directory
+rm -rf data
+ln -s /vagrant/out data
