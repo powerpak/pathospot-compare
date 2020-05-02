@@ -11,7 +11,7 @@ class Hash
   end unless Hash.method_defined?(:except)
 end
 
-
+# Configure Vagrant environments for virtualbox and AWS
 Vagrant.configure("2") do |config|
   config.vm.box = "debian/stretch64"
   
