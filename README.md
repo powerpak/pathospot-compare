@@ -63,7 +63,7 @@ Rake, aka [Ruby Make][rake], is used to kick off the pipeline. Some tasks requir
 
 If you used Vagrant to get started, it automatically downloads an [example dataset (tar.gz)][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are saved at `example/igb` and their metadata is in `example/mrsa.db`. Default environment variables in `scripts/env.sh` are configured so that the pipeline will run on the example data.
 
-To run the full analysis, type:
+To run the full analysis:
 
     $ IN_QUERY="1=1" rake parsnp epi encounters
 
@@ -74,7 +74,12 @@ which runs the three main tasks (`parsnp`, `epi`, and `encounters`). When the pi
 - `.encounters.tsv` → made by `encounters`; contains spatiotemporal data for patients
 - `.epi.heatmap.json` → made by `epi`; contains culture test data (positives and negatives)
 
-These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. Simply open <http://localhost:8888/> in your web browser to see the finished product.
+These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you.
+
+- If you used VirtualBox, go to <http://localhost:8888>, which forwards to the virtual machine.
+- If you are on AWS, use the following to show the public IP address of your machine; paste it into your browser's address bar.
+
+		$ aws ec2 describe-instances | grep ASSOCIATION | cut -f4
 
 If you want to copy the output files outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] on another machine, use [vagrant-scp][] as follows from your _host_ machine:
 

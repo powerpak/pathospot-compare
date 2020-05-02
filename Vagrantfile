@@ -12,6 +12,7 @@ class Hash
 end
 
 # Configure Vagrant environments for virtualbox and AWS
+# Note: Analyzing the example dataset requires at least 4GB of RAM
 Vagrant.configure("2") do |config|
   config.vm.box = "debian/stretch64"
   
