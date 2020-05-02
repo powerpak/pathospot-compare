@@ -12,7 +12,7 @@ This pipeline runs on Linux; however, Mac and Windows users can use [Vagrant][] 
 
 [MUMmer]: http://mummer.sourceforge.net/
 
-### Using vagrant
+### Using Vagrant
 
 Download and install Vagrant using any of the [official installers][vagrant] for Mac, Windows, or Linux. Vagrant supports both local virtualization via VirtualBox and cloud hosts (e.g., AWS).
 
@@ -67,30 +67,19 @@ To run the full analysis:
 
     $ IN_QUERY="1=1" rake parsnp epi encounters
 
-which runs the three main tasks (`parsnp`, `epi`, and `encounters`). When the pipeline is finished, there will be four output files saved into `out/`, which begin with a YYYY-MM-DD date prefix and have the following extensions:
+which runs the three main tasks (`parsnp`, `epi`, and `encounters`). When the pipeline is finished, there will be four output files saved into `out/`, which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
 
 - `.parsnp.heatmap.json` → made by `parsnp`; contains the genomic SNP distance matrix
 - `.parsnp.vcfs.npz` → made by `parsnp`; contains SNP variant data for each genome
 - `.encounters.tsv` → made by `encounters`; contains spatiotemporal data for patients
 - `.epi.heatmap.json` → made by `epi`; contains culture test data (positives and negatives)
 
-These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you.
+These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8888>, which forwards to the virtual machine. For AWS, instead use your public IPv4 address, which you can obtain by running the following within the EC2 instance:
 
-- If you used VirtualBox, go to <http://localhost:8888>, which forwards to the virtual machine.
-- If you are on AWS, use the following to show the public IP address of your machine; paste it into your browser's address bar.
-
-		$ aws ec2 describe-instances | grep ASSOCIATION | cut -f4
-
-If you want to copy the output files outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] on another machine, use [vagrant-scp][] as follows from your _host_ machine:
-
-	$ vagrant plugin install vagrant-scp
-	$ vagrant scp default:/vagrant/out/*.json /destination/on/host
-	$ vagrant scp default:/vagrant/out/*.npz /destination/on/host
-	$ vagrant scp default:/vagrant/out/*.encounters.tsv /destination/on/host
+	$ curl http://169.254.169.254/latest/meta-data/public-ipv4
 
 [mrsa.tar.gz]: https://pathospot.org/data/mrsa.tar.gz
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
-[vagrant-scp]: https://github.com/invernizzi/vagrant-scp
 
 ### Rake tasks
 
@@ -111,6 +100,17 @@ FIXME: `rake encounters` ... should be documented.
 #### epi
 
 FIXME: `rake epi` ... should be documented.
+
+## Exporting data from Vagrant
+
+If you want to copy the output files outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] on another machine, use [vagrant-scp][] as follows from your _host_ machine:
+
+	$ vagrant plugin install vagrant-scp
+	$ vagrant scp default:/vagrant/out/*.json /destination/on/host
+	$ vagrant scp default:/vagrant/out/*.npz /destination/on/host
+	$ vagrant scp default:/vagrant/out/*.encounters.tsv /destination/on/host
+
+[vagrant-scp]: https://github.com/invernizzi/vagrant-scp
 
 ## Other notes
 
