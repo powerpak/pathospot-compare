@@ -1,15 +1,24 @@
 ## Getting started on the AWS cloud with vagrant
 
-Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. First, install the `vagrant-aws` plugin and the dummy box that goes along with it.
+Vagrant can run this pipeline on the AWS cloud using your AWS credentials. First, ensure [install Vagrant][vagrant] if you don't have it. Then clone this repository to a directory on your development machine and `cd` into it.
 
-    $ vagrant plugin install vagrant-aws
+We have to manually install a specific version of a prerequisite Vagrant plugin `fog-ovirt` because of an incompatibility with the version of Ruby included in Vagrant 2.2.7 (which [will be fixed][fixvagrant] in Vagrant 2.2.8).
+
+[vagrant]: https://www.vagrantup.com/downloads.html
+[fixvagrant]: https://github.com/hashicorp/vagrant/issues/11518
+
+    $ vagrant plugin install --plugin-version 1.0.1 fog-ovirt
+
+Then, install the `vagrant-aws` plugin and the dummy box that goes along with it. 
+
+	$ vagrant plugin install vagrant-aws
     $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
 
-Then configure your AWS account on your machine using their command-line tool. It will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more information on creating an AWS account and obtaining credentials, [see this tutorial][aws].
+[Download and install][awsinstall] the `aws` command-line tool. Run the following to set it up; it will prompt you for your AWS credentials, preferred region (e.g. `us-east-1`), and output format (e.g. `text`). For more information on creating an AWS account and obtaining credentials, [see this tutorial][aws].
 
-[aws]: (https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration)
+[awsinstall]: https://aws.amazon.com/cli/
+[aws]: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration
 
-    $ pip install awscli
     $ aws configure
 
 You must then create an SSH keypair for EC2...
@@ -19,12 +28,14 @@ You must then create an SSH keypair for EC2...
     $ sed -i -e $'/-----BEGIN/s/.*\t//' ~/.aws/default.pem
     $ sed -i -e $'/-----END/s/\t.*//' ~/.aws/default.pem
 
-...and a security group—we'll call it `allow-ssh`—that allows inbound SSH traffic. Here, we allow traffic from any IP address, but you could choose a narrower range, if you know your public IP address.
+...and a security group—we'll call it `allow-ssh-http`—that allows inbound SSH and HTTP traffic. Here, we allow traffic from any IP address (`0.0.0.0/0`), but you can (and should) specify a narrower range, if you know your public IP address.
 
-    $ aws ec2 create-security-group --group-name allow-ssh \
-        --description "allows all inbound SSH traffic"
-    $ aws ec2 authorize-security-group-ingress --group-name allow-ssh \
+    $ aws ec2 create-security-group --group-name allow-ssh-http \
+        --description "allows all inbound SSH and HTTP traffic"
+    $ aws ec2 authorize-security-group-ingress --group-name allow-ssh-http \
         --protocol tcp --port 22 --cidr 0.0.0.0/0
+    $ aws ec2 authorize-security-group-ingress --group-name allow-ssh-http \
+        --protocol tcp --port 80 --cidr 0.0.0.0/0
 
 Finally, you can boot and provision your AWS EC2 machine with Vagrant.
 

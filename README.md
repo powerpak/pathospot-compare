@@ -39,7 +39,7 @@ Vagrant can also run this pipeline on the AWS cloud using your AWS credentials. 
 
 ### Minerva/Chimera (Mount Sinai users only)
 
-Mount Sinai users getting started on the [Minerva computing environment][minerva] can use an included script to setup an appropriate environment on a Chimera node (without needing vagrant); for more information see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
+Mount Sinai users getting started on the [Minerva computing environment][minerva] can use an included script to setup an appropriate environment on a Chimera node (Vagrant is unnecessary); for more information see [README-minerva.md](https://github.com/powerpak/pathospot-compare/blob/master/README-minerva.md).
 
 [minerva]: https://labs.icahn.mssm.edu/minervalab/
 
@@ -49,13 +49,13 @@ You may be able to install prerequisites directly on a Linux machine by editing 
 
 ## Usage
 
-Rake, aka [ruby make][], is used to kick off the pipeline as follows. Certain tasks require more variables to be set before being invoked, which is done via [environment variables](#environment-variables) detailed more below. 
+Rake, aka [ruby make][], is used to kick off the pipeline. Some tasks require certain parameters, which are provided as environment variables (and detailed more below). A quick primer on how to use Rake:
 
     $ rake -T                    # list the available tasks
-    $ rake $TASK_1 $TASK_2       # run tasks named $TASK_1 and $TASK_2
+    $ rake $TASK_1 $TASK_2       # run the tasks named $TASK_1 and $TASK_2
     $ FOO="bar" rake $TASK_1     # run $TASK_1 with variable FOO set to "bar"
 
-**Important:** If you are not using Vagrant, whenever firing up the pipeline in a new shell, you must always run `source scripts/env.sh` _before_ running `rake`. The Vagrant environment does this automatically by running that script within all new login shells.
+**Important:** If you are not using Vagrant, whenever firing up the pipeline in a new shell, you must always run `source scripts/env.sh` _before_ running `rake`. The Vagrant environment does this automatically via `~/.profile`.
 
 [ruby make]: https://github.com/ruby/rake
 
@@ -63,7 +63,7 @@ Rake, aka [ruby make][], is used to kick off the pipeline as follows. Certain ta
 
 If you used Vagrant to get started, it automatically downloads an [example dataset (tar.gz)][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are saved at `example/igb` and their metadata is in `example/mrsa.db`. Default environment variables in `scripts/env.sh` are configured so that the pipeline will run on the example data.
 
-To run a full analysis, type:
+To run the full analysis, type:
 
     $ IN_QUERY="1=1" rake parsnp epi encounters
 
