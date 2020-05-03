@@ -35,7 +35,7 @@ cd /vagrant
 sudo -u \#$DEFAULT_UID bundle install --deployment
 
 # Fetch all the python modules required by the python scripts
-pip install -r requirements.txt``
+pip install -r requirements.txt
 
 # Install the essential dependencies for the pipeline
 sudo -u \#$DEFAULT_UID rake check
@@ -46,6 +46,7 @@ sudo -u \#$DEFAULT_UID rake example_data
 # Modify the default user's ~/.profile to save a few steps upon `vagrant ssh`ing
 echo >> "$DEFAULT_HOME/.profile"
 echo "cd /vagrant" >> "$DEFAULT_HOME/.profile"
+# Create the default scripts/env.sh from the provided scripts/example.env.sh
 echo "if [ ! -f scripts/env.sh ]; then cp scripts/example.env.sh scripts/env.sh; fi" \
   >> "$DEFAULT_HOME/.profile"
 echo "source scripts/env.sh" >> "$DEFAULT_HOME/.profile"

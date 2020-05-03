@@ -27,7 +27,8 @@ HARVEST_DIR = "#{REPO_DIR}/vendor/harvest"
 MASH_DIR = "#{REPO_DIR}/vendor/mash"
 EXAMPLE_DIR = "#{REPO_DIR}/example"
 
-OUT     = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+OUT = File.expand_path(ENV['OUT'] || "#{REPO_DIR}/out")
+
 IN_QUERY = ENV['IN_QUERY']
 IN_FOFN = ENV['IN_FOFN'] && File.expand_path(ENV['IN_FOFN'])
 if ENV['PATHOGENDB_MYSQL_URI']
@@ -42,7 +43,12 @@ if IN_QUERY
   abort "FATAL: IN_QUERY requires also specifying PATHOGENDB_URI" unless PATHOGENDB_URI
   abort "FATAL: IN_QUERY requires also specifying IGB_DIR" unless IGB_DIR
   pdb = PathogenDBClient.new(PATHOGENDB_URI, adapter: PATHOGENDB_ADAPTER)
-  IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
+  begin
+    IN_PATHS = pdb.assembly_paths(IGB_DIR, IN_QUERY)
+  rescue
+    STDERR.puts "WARN: could not query assemblies from PathogenDB; check your PATHOGENDB_URI?"
+    IN_PATHS = []
+  end
 else
   begin
     IN_PATHS = IN_FOFN && File.new(IN_FOFN).readlines.map(&:strip).reject(&:empty?)
@@ -130,11 +136,18 @@ file "#{MASH_DIR}/mash" do
   end
 end
 
-task :example_data => [:env, EXAMPLE_DIR, "#{EXAMPLE_DIR}/mrsa.db", "#{EXAMPLE_DIR}/igb"]
+EXAMPLE_DB = "#{EXAMPLE_DIR}/mrsa.db"
+task :example_data => [:env, :example_check, EXAMPLE_DIR, EXAMPLE_DB, "#{EXAMPLE_DIR}/igb"]
 directory EXAMPLE_DIR
 directory "#{EXAMPLE_DIR}/igb" => "#{EXAMPLE_DIR}/mrsa.db"
-file "#{EXAMPLE_DIR}/mrsa.db" do
-  $stderr.puts "Downloading example dataset from pathospot.org..."
+task :example_check do
+  if File.exist?(EXAMPLE_DB) && File.size(EXAMPLE_DB) == 0
+    rm EXAMPLE_DB
+    Rake::Task[EXAMPLE_DB].invoke
+  end
+end
+file "#{EXAMPLE_DIR}/mrsa.db" => EXAMPLE_DIR do
+  STDERR.puts "Downloading example dataset from pathospot.org..."
   Dir.chdir(EXAMPLE_DIR) do
     system <<-SH or abort
       curl -L -s -o mrsa.tar.gz 'https://pathospot.org/data/mrsa.tar.gz'
@@ -180,6 +193,7 @@ task :parsnp_check do
   abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
   abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task parsnp requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI
+  abort "FATAL: Your IN_QUERY did not retrieve any assemblies" unless (IN_PATHS || []).size > 0
 end
 
 # This rule creates a filtered FASTA file from the original that drops any contigs flagged as "merged" or "garbage"
@@ -444,6 +458,8 @@ task :encounters => [:check, ENCOUNTERS_TSV_FILE]
 
 file ENCOUNTERS_TSV_FILE do |t|
   abort "FATAL: Task encounters requires specifying IN_QUERY" unless IN_QUERY
+  abort "FATAL: Task encounters requires specifying OUT_PREFIX" unless OUT_PREFIX
+  abort "FATAL: Task encounters requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
   encounters = pdb.encounters(IN_QUERY)
   
@@ -486,3 +502,11 @@ file HEATMAP_EPI_JSON_FILE do |task|
  
   File.open(task.name, "w") { |f| JSON.dump(json, f) }
 end
+
+
+# =======
+# = all =
+# =======
+
+desc "A shortcut for running the parsnp, epi, and encounters tasks"
+task :all => [:check, :parsnp, :epi, :encounters]

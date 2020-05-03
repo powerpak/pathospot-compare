@@ -63,11 +63,11 @@ Rake, aka [Ruby Make][rake], is used to kick off the pipeline. Some tasks requir
 
 If you used Vagrant to get started, it automatically downloads an [example dataset (tar.gz)][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are saved at `example/igb` and their metadata is in `example/mrsa.db`. Default environment variables in `scripts/env.sh` are configured so that the pipeline will run on the example data.
 
-To run the full analysis:
+To run the full analysis, run the following, which invokes the three main tasks (`parsnp`, `epi`, and `encounters`, explained more below).
 
-    $ IN_QUERY="1=1" rake parsnp epi encounters
+    $ rake all
 
-which runs the three main tasks (`parsnp`, `epi`, and `encounters`). When the pipeline is finished, there will be four output files saved into `out/`, which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
+When the analysis finishes, there will be four output files saved into `out/`, which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
 
 - `.parsnp.heatmap.json` → made by `parsnp`; contains the genomic SNP distance matrix
 - `.parsnp.vcfs.npz` → made by `parsnp`; contains SNP variant data for each genome
@@ -103,7 +103,7 @@ FIXME: `rake epi` ... should be documented.
 
 ## Exporting data from Vagrant
 
-If you want to copy the output files outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] on another machine, use [vagrant-scp][] as follows from your _host_ machine:
+If you want to copy the final outputs outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] from a different machine, use [vagrant-scp][] as follows from the _host_ machine:
 
 	$ vagrant plugin install vagrant-scp
 	$ vagrant scp default:/vagrant/out/*.json /destination/on/host
