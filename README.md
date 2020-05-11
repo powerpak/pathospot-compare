@@ -85,7 +85,11 @@ These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant
 
 #### parsnp
 
-FIXME: `rake parsnp` ... should be documented.
+`rake parsnp` 
+
+This task requires you to set the `IN_QUERY` and `OUT_PREFIX` environment variables, which are 
+
+- `IN_QUERY`: An `SQL WHERE` clause ... FIXME
 
 In brief, it produces similar output to `rake heatmap` for use with [pathoSPOT-visualize][], but uses parsnp instead of MUMmer to calculate SNV distances between the sequences.
 
