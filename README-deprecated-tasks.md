@@ -70,6 +70,8 @@ This task requires you to set the `IN_FOFN`, `OUT_PREFIX`, `SEED_WEIGHT`, and `L
 
 Note that this task requires use of `IN_QUERY` instead of the simpler `IN_FOFN` approach to selecting input genomes, because it expects metadata (date, location, MLST, etc.) to be queriable in PathogenDB for each of the genomes. This data is needed by [pathoSPOT-visualize][] in order to draw the corresponding parts of the visualization.
 
+[pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
+
 #### mugsy
 
 `rake mugsy` requires you to set the `IN_FOFN`, `OUT_PREFIX`, and `OUTGROUP` environment variables. See [Environment variables](#environment-variables) for a description of each.
