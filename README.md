@@ -85,16 +85,22 @@ These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant
 
 #### parsnp
 
-`rake parsnp` 
+`rake parsnp` uses [Parsnp][] from [HarvestTools][] to perform intraspecific genome alignment (on FASTA files, one per assembly, with optional BED-annotated genes). An optional (but recommended) preclustering step is performed with [mash][] to only align clusters of genomes that appear closely related, allowing these alignments to include a larger core genome and increase confidence that SNP counts will accurately reflect genetic divergence.
 
-This task requires you to set the `IN_QUERY` and `OUT_PREFIX` environment variables, which are 
+<img src="https://pathospot.org/images/pathospot-compare-diagram.svg" width="250px"/>
 
-- `IN_QUERY`: An `SQL WHERE` clause ... FIXME
+This task requires you to set the `IN_QUERY`, `OUT_PREFIX`, `PATHOGENDB_URI`, and `IGB_DIR` environment variables. 
+
+- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included. For our example, `1=1` is used, which uses all assemblies in the database.
+- `OUT_PREFIX`: A prefix that is prepended to the output filenames to give them a unique name; for our example, `out` is used.
+- `IGB_DIR`: The full path to a directory containing ... FIXME
 
 In brief, it produces similar output to `rake heatmap` for use with [pathoSPOT-visualize][], but uses parsnp instead of MUMmer to calculate SNV distances between the sequences.
 
 In order for parsnp to complete in a reasonable amount of time and with acceptable core genome sizes (e.g., >50%), you may specify `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune a preclustering step that is done with [mash][]. Clusters up to `MASH_CUTOFF` units in diameter are created, with the size of each cluster capped at `MAX_CLUSTER_SIZE`. Parsnp will be run separately on each cluster and distances remerged into the final output.
 
+[HarvestTools]: https://harvest.readthedocs.io/en/latest/
+[parsnp]: https://harvest.readthedocs.io/en/latest/content/parsnp.html
 [mash]: https://mash.readthedocs.io/en/latest/
 
 #### encounters
