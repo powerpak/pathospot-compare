@@ -2,9 +2,9 @@
 
 This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
 
-<a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo-medium.svg" width="400px"/></a>
-
 The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
+
+<p align="center"><a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
 
 For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment.
 
@@ -88,7 +88,9 @@ These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant
 
 ### Rake tasks
 
-#### parsnp
+By default, all output for tasks is saved in `./out`. To change this, set the `OUT` environment variable.
+
+#### rake parsnp
 
 `rake parsnp` uses [Parsnp][] from [HarvestTools][] to create intraspecific genome alignments (on assembly sequences in FASTA files, with optional gene annotations in BED format). An optional (but recommended) preclustering step is performed with [Mash][] to only align clusters of genomes that appear closely related, allowing these alignments to include a larger core genome and increase confidence that SNP counts will accurately reflect genetic divergence.
 
@@ -98,12 +100,17 @@ This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` en
 
 - `IGB_DIR`: The full path to a directory containing the genome assemblies, in [FASTA format][fasta]. Each of these files should be in its own subdirectory named identically minus the `.fa` or `.fasta` extension. Each subdirectory may also contain a [BED file][bed] with gene annotations. See the `igb` directory in the [example dataset (tar.gz)][mrsa.tar.gz].
 - `PATHOGENDB_URI`: A [URI to the database][sequeluri] containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`.
-- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][], `1=1` is used, which simply uses all of the assemblies. For your own database, it is likely useful to filter by species and/or location.
+- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location.
 
 You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. 
 
-- `MASH_CUTOFF`: The maximum diameter, in Mash units, of the clusters. Mash units approximate average nucleotide identity (ANI). The default is 0.02, approximating 98% ANI among all genomes within each cluster. To disable Mash preclustering, use a value of 1.
-- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. To disable Mash preclustering, use a number larger than the number of assemblies in your dataset.
+- `MASH_CUTOFF`: The maximum diameter, in Mash units, of each cluster. Mash units approximate average nucleotide identity (ANI). The default is **0.02**, approximating 98% ANI (1 - 0.02) among all genomes in each cluster. To disable Mash preclustering, use a value of 1.
+- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. To disable Mash preclustering, use a number larger than the number of assemblies in your dataset.
+
+This tasks creates two final output files which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
+
+- `.parsnp.heatmap.json` → contains the genomic SNP distance matrix and other metadata, in JSON format
+- `.parsnp.vcfs.npz` → contains SNP variant data for each genome, in NumPy [NPZ format][npz].
 
 [HarvestTools]: https://harvest.readthedocs.io/en/latest/
 [Parsnp]: https://harvest.readthedocs.io/en/latest/content/parsnp.html
@@ -112,6 +119,7 @@ You may optionally specify two additional environment variables `MASH_CUTOFF` an
 [fasta]: https://en.wikipedia.org/wiki/FASTA_format
 [bed]: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 [sequeluri]: https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html
+[npz]: https://numpy.org/doc/stable/reference/generated/numpy.savez.html?highlight=savez#numpy.savez
 
 #### encounters
 
