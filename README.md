@@ -1,10 +1,13 @@
 # pathoSPOT-compare
 
-This is the comparative genomics pipeline for PathoSPOT, the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
+This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
 
 The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
 
+For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment.
+
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
+[pathospot]: https://pathospot.org
 
 ## Requirements
 
@@ -74,7 +77,7 @@ When the analysis finishes, there will be four output files saved into `out/`, w
 - `.encounters.tsv` → made by `encounters`; contains spatiotemporal data for patients
 - `.epi.heatmap.json` → made by `epi`; contains culture test data (positives and negatives)
 
-These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8888>, which forwards to the virtual machine. For AWS, instead use your public IPv4 address, which you can obtain by running the following within the EC2 instance:
+These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8888>, which forwards to the virtual machine. For AWS, navigate instead to your public IPv4 address, which you can obtain by running the following within the EC2 instance:
 
 	$ curl http://169.254.169.254/latest/meta-data/public-ipv4
 
@@ -85,23 +88,28 @@ These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant
 
 #### parsnp
 
-`rake parsnp` uses [Parsnp][] from [HarvestTools][] to perform intraspecific genome alignment (on FASTA files, one per assembly, with optional BED-annotated genes). An optional (but recommended) preclustering step is performed with [mash][] to only align clusters of genomes that appear closely related, allowing these alignments to include a larger core genome and increase confidence that SNP counts will accurately reflect genetic divergence.
+`rake parsnp` uses [Parsnp][] from [HarvestTools][] to create intraspecific genome alignments (on assembly sequences in FASTA files, with optional gene annotations in BED format). An optional (but recommended) preclustering step is performed with [Mash][] to only align clusters of genomes that appear closely related, allowing these alignments to include a larger core genome and increase confidence that SNP counts will accurately reflect genetic divergence.
 
 <img src="https://pathospot.org/images/pathospot-compare-diagram.svg" width="250px"/>
 
-This task requires you to set the `IN_QUERY`, `OUT_PREFIX`, `PATHOGENDB_URI`, and `IGB_DIR` environment variables. 
+This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` environment variables. When using the [example environment][], these variables are set for you and run a full analysis on the example dataset.
 
-- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included. For our example, `1=1` is used, which uses all assemblies in the database.
-- `OUT_PREFIX`: A prefix that is prepended to the output filenames to give them a unique name; for our example, `out` is used.
-- `IGB_DIR`: The full path to a directory containing ... FIXME
+- `IGB_DIR`: The full path to a directory containing the genome assemblies, in [FASTA format][fasta]. Each of these files should be in its own subdirectory named identically minus the `.fa` or `.fasta` extension. Each subdirectory may also contain a [BED file][bed] with gene annotations. See the `igb` directory in the [example dataset (tar.gz)][mrsa.tar.gz].
+- `PATHOGENDB_URI`: A [URI to the database][sequeluri] containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`.
+- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][], `1=1` is used, which simply uses all of the assemblies. For your own database, it is likely useful to filter by species and/or location.
 
-In brief, it produces similar output to `rake heatmap` for use with [pathoSPOT-visualize][], but uses parsnp instead of MUMmer to calculate SNV distances between the sequences.
+You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. 
 
-In order for parsnp to complete in a reasonable amount of time and with acceptable core genome sizes (e.g., >50%), you may specify `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune a preclustering step that is done with [mash][]. Clusters up to `MASH_CUTOFF` units in diameter are created, with the size of each cluster capped at `MAX_CLUSTER_SIZE`. Parsnp will be run separately on each cluster and distances remerged into the final output.
+- `MASH_CUTOFF`: The maximum diameter, in Mash units, of the clusters. Mash units approximate average nucleotide identity (ANI). The default is 0.02, approximating 98% ANI among all genomes within each cluster. To disable Mash preclustering, use a value of 1.
+- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. To disable Mash preclustering, use a number larger than the number of assemblies in your dataset.
 
 [HarvestTools]: https://harvest.readthedocs.io/en/latest/
-[parsnp]: https://harvest.readthedocs.io/en/latest/content/parsnp.html
-[mash]: https://mash.readthedocs.io/en/latest/
+[Parsnp]: https://harvest.readthedocs.io/en/latest/content/parsnp.html
+[Mash]: https://mash.readthedocs.io/en/latest/
+[example]: https://github.com/powerpak/pathospot-compare/blob/master/scripts/example.env.sh
+[fasta]: https://en.wikipedia.org/wiki/FASTA_format
+[bed]: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
+[sequeluri]: https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html
 
 #### encounters
 
@@ -124,4 +132,4 @@ If you want to copy the final outputs outside of the Vagrant environment, e.g. t
 
 ## Other notes
 
-This pipeline downloads and installs the appropriate versions of mash and HarvestTools into `vendor/`.
+This pipeline downloads and installs the appropriate versions of Mash and HarvestTools into `vendor/`.

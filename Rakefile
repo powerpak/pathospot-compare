@@ -191,7 +191,6 @@ task :parsnp => [:check, :parsnp_check, PARSNP_CLUSTERS_TSV, PARSNP_VCFS_NPZ_FIL
 
 task :parsnp_check do
   abort "FATAL: Task parsnp requires specifying IN_QUERY" unless IN_QUERY
-  abort "FATAL: Task parsnp requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task parsnp requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI
   abort "FATAL: Your IN_QUERY did not retrieve any assemblies" unless (IN_PATHS || []).size > 0
 end
@@ -458,7 +457,6 @@ task :encounters => [:check, ENCOUNTERS_TSV_FILE]
 
 file ENCOUNTERS_TSV_FILE do |t|
   abort "FATAL: Task encounters requires specifying IN_QUERY" unless IN_QUERY
-  abort "FATAL: Task encounters requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task encounters requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
   encounters = pdb.encounters(IN_QUERY)
@@ -482,7 +480,6 @@ task :epi => [:check, HEATMAP_EPI_JSON_FILE]
 
 file HEATMAP_EPI_JSON_FILE do |task|
   abort "FATAL: Task epi requires specifying IN_QUERY" unless IN_QUERY
-  abort "FATAL: Task epi requires specifying OUT_PREFIX" unless OUT_PREFIX
   abort "FATAL: Task epi requires specifying PATHOGENDB_URI" unless PATHOGENDB_URI 
   
   ISOLATES_COLS = [:order_date, :hospital_abbreviation, :collection_unit]
