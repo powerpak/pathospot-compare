@@ -105,10 +105,10 @@ This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` en
 - `PATHOGENDB_URI`: A [URI to the database][sequeluri] containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`.
 - `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][example], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location. The query can include any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
 
-You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. 
+You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**.
 
-- `MASH_CUTOFF`: The maximum diameter, in Mash units, of each cluster. Mash units approximate average nucleotide identity (ANI). The default is **0.02**, approximating 98% ANI (1 - 0.02) among all genomes in each cluster. To disable Mash preclustering, use a value of 1.
-- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. To disable Mash preclustering, use a number larger than the number of assemblies in your dataset.
+- `MASH_CUTOFF`: The maximum diameter, in Mash units, of each cluster. Mash units approximate average nucleotide identity (ANI). The default is **0.02**, approximating 98% ANI (1 - 0.02) among all genomes in each cluster.
+- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. 
 
 This tasks creates two final output files which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
 
