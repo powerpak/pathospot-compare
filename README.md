@@ -99,11 +99,11 @@ By default, all output for tasks is saved in `./out`. To change this, set the `O
 
 <img src="https://pathospot.org/images/pathospot-compare-diagram.svg" width="250px"/>
 
-This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` environment variables. When using the [example environment][], these variables are set for you and run a full analysis on the example dataset.
+This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` environment variables. When using the [example environment][example], these variables are set for you and run a full analysis on the example dataset.
 
 - `IGB_DIR`: The full path to a directory containing the genome assemblies, in [FASTA format][fasta]. Each of these files should be in its own subdirectory named identically minus the `.fa` or `.fasta` extension. Each subdirectory may also contain a [BED file][bed] with gene annotations. See the `igb` directory in the [example dataset (tar.gz)][mrsa.tar.gz].
 - `PATHOGENDB_URI`: A [URI to the database][sequeluri] containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`.
-- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location. The query can include any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
+- `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][example], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location. The query can include any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
 
 You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. 
 
