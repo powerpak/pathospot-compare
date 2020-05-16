@@ -140,13 +140,13 @@ When provided to [pathoSPOT-visualize][] alongside the outputs from `rake parsnp
 
 #### rake epi
 
-`rake epi` produces a JSON file containing spatiotemporal data for all isolates and microbiology tests (both positive and negative) associated with pathogen genomes. It requires the same three arguments as `rake parsnp`: `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY`.
+`rake epi` produces a JSON file containing spatiotemporal data for all isolates and culture tests (both positive and negative) for the patients associated with particular pathogen genomes. It requires the same three arguments as `rake parsnp`: `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY`.
 
 The output file includes a YYYY-MM-DD formatted date in the filename and ends with `.epi.heatmap.json`.
 
 <a href="https://pathospot.org/heatmap.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&filter=mergeSamePt&snps=15&order=groupOrder&range=0%7C0.15&mode=network&play=1"><img src="https://pathospot.org/images/network.png" width="360px"/></a>
 
-When provided to [pathoSPOT-visualize][] alongside the outputs from `rake parsnp`, it enables the display of non-sequenced culture isolates in the "dendro-timeline" as well as the density map of collected isolates underlying the "network" visualization, seen above.
+When provided to [pathoSPOT-visualize][] alongside the outputs from `rake parsnp`, it enables the display of non-sequenced culture results in the "dendro-timeline" as well as the density map of collected isolates underlying the "network" visualization, seen above.
 
 #### rake all
 
