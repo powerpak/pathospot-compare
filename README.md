@@ -157,7 +157,7 @@ This is a shortcut for `rake parsnp encounters epi`, which runs all three of tho
 
 This downloads the [example dataset (tar.gz)][mrsa.tar.gz] into `example/`, if it is not already present.
 
-### Metadata database
+## Metadata database
 
 Besides the genome sequences and their gene annotations, the pipeline expects a metadata database supplied via the `PATHOGENDB_URI` parameter. We provide an example database called `mrsa.db` in the [example dataset (tar.gz)](https://pathospot.org/data/mrsa.tar.gz), which you can open and modify to begin analyzing your own specimens. You do not need to be a programmer or pay for software to do so; we used [SQLite][] which is free and open-source software with many available GUI tools.
 
