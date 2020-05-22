@@ -84,7 +84,7 @@ When the analysis finishes, there will be four output files saved into `out/`, w
 
 These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8888>, which forwards to the virtual machine. For AWS, navigate instead to your public IPv4 address, which you can obtain by running the following within the EC2 instance:
 
-	$ curl http://169.254.169.254/latest/meta-data/public-ipv4
+	$ curl http://169.254.169.254/latest/meta-data/public-ipv4; echo
 
 [mrsa.tar.gz]: https://pathospot.org/data/mrsa.tar.gz
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
