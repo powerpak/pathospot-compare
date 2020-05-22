@@ -7,8 +7,6 @@ Note: you need to have Vagrant version ≥2.2.9 in order for the following to wo
 [vagrant]: https://www.vagrantup.com/downloads.html
 [fixvagrant]: https://github.com/hashicorp/vagrant/issues/11518
 
-    $ vagrant plugin install --plugin-version 1.0.1 fog-ovirt
-
 To get started install the `vagrant-aws` plugin and the dummy box that goes along with it. 
 
 	$ vagrant plugin install vagrant-aws
