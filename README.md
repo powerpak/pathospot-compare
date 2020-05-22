@@ -2,7 +2,7 @@
 
 This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
 
-The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
+The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a [relational database][README-database.md] (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
 
 <p align="center"><a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
 
@@ -91,7 +91,7 @@ These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant
 
 ### Rake tasks
 
-By default, all output for tasks is saved in `./out`. To change this, set the `OUT` environment variable.
+By default, all output for tasks is saved in `out/`. To change this, set the `OUT` environment variable.
 
 #### rake parsnp
 
@@ -102,7 +102,7 @@ By default, all output for tasks is saved in `./out`. To change this, set the `O
 This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` environment variables. When using the [example environment][example], these variables are set for you and run a full analysis on the example dataset.
 
 - `IGB_DIR`: The full path to a directory containing the genome assemblies, in [FASTA format][fasta]. Each of these files should be in its own subdirectory named identically minus the `.fa` or `.fasta` extension. Each subdirectory may also contain a [BED file][bed] with gene annotations. See the `igb` directory in the [example dataset (tar.gz)][mrsa.tar.gz].
-- `PATHOGENDB_URI`: A [URI to the database][sequeluri] containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`.
+- `PATHOGENDB_URI`: A [URI][sequeluri] to the database containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`. See [README-database.md][] to learn how to build your own database.
 - `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][example], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location. The query can include any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
 
 You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**.
@@ -127,6 +127,7 @@ When these are placed in the `data/` directory of [pathoSPOT-visualize][], it en
 [bed]: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 [sequeluri]: https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html
 [npz]: https://numpy.org/doc/stable/reference/generated/numpy.savez.html?highlight=savez#numpy.savez
+[README-database.md]: https://github.com/powerpak/pathospot-compare/blob/master/README-database.md
 
 #### rake encounters
 
@@ -156,6 +157,14 @@ This is a shortcut for `rake parsnp encounters epi`, which runs all three of tho
 
 This downloads the [example dataset (tar.gz)][mrsa.tar.gz] into `example/`, if it is not already present.
 
+### Metadata database
+
+Besides the genome sequences and their gene annotations, the pipeline expects a metadata database supplied via the `PATHOGENDB_URI` parameter. We provide an example database called `mrsa.db` in the [example dataset (tar.gz)](https://pathospot.org/data/mrsa.tar.gz), which you can open and modify to begin analyzing your own specimens. You do not need to be a programmer or pay for software to do so; we used [SQLite][] which is free and open-source software with many available GUI tools.
+
+To learn how to get started on your own database, see [README-database.md][].
+
+[SQLite]: https://www.sqlite.org/index.html
+
 ## Exporting data from Vagrant
 
 If you want to copy the final outputs outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] from a different machine, use [vagrant-scp][] as follows from the _host_ machine:
@@ -169,4 +178,4 @@ If you want to copy the final outputs outside of the Vagrant environment, e.g. t
 
 ## Other notes
 
-This pipeline downloads and installs the appropriate versions of Mash and HarvestTools into `vendor/`.
+This pipeline downloads and installs the appropriate versions of [Mash][] and [HarvestTools][] into `vendor/`.

@@ -2,14 +2,14 @@
 
 Vagrant can run this pipeline on the AWS cloud using your AWS credentials. First, [install Vagrant][vagrant] if you haven't already. Then clone this repository to a directory on your development machine and `cd` into it.
 
-We have to manually install a specific version of a prerequisite Vagrant plugin `fog-ovirt` because of an incompatibility with the version of Ruby included in Vagrant 2.2.7 (which [will be fixed][fixvagrant] in Vagrant 2.2.8).
+Note: you need to have Vagrant version ≥2.2.9 in order for the following to work, because of a [bug when installing vagrant-aws][fixvagrant] on earlier versions. To check your version, run `vagrant --version`.
 
 [vagrant]: https://www.vagrantup.com/downloads.html
 [fixvagrant]: https://github.com/hashicorp/vagrant/issues/11518
 
     $ vagrant plugin install --plugin-version 1.0.1 fog-ovirt
 
-Then, install the `vagrant-aws` plugin and the dummy box that goes along with it. 
+To get started install the `vagrant-aws` plugin and the dummy box that goes along with it. 
 
 	$ vagrant plugin install vagrant-aws
     $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
