@@ -46,3 +46,13 @@ Vagrant will spend a few minutes configuring and building the VM. Once it's done
 You should see the bash prompt `admin@ip-...:/vagrant$`, and may proceed to [**Usage** in the main README](https://github.com/powerpak/pathospot-compare#usage).
 
 The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant halt` to exit, and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+
+### Finding your public IP
+
+Once the pipeline has completed, you will likely want to view the results in [pathospot-visualize][], which is automatically installed to your EC2 instance and served over HTTP. You will need to find out your public IP address, which you can do by running the following on the VM:
+
+    $ curl http://169.254.169.254/latest/meta-data/public-ipv4; echo
+
+Paste this IP address into your web browser's address bar to open [pathospot-visualize][].
+
+[pathospot-visualize]: https://github.com/powerpak/pathospot-visualize
