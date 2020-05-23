@@ -20,7 +20,7 @@ However, if you want to automate anything about your database or make use of the
 
 ### How does `IN_QUERY` work?
 
-When running the rake tasks described in the [main README](https://github.com/powerpak/pathospot-comparison), an environment variable called `IN_QUERY` is expected. This is used as an `SQL WHERE` clause to filter the assemblies that will be included.  Since several LEFT JOINs are performed in this query, you filter by any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
+When running the rake tasks described in the [main README](https://github.com/powerpak/pathospot-comparison), an environment variable called `IN_QUERY` is expected. This is used as an `SQL WHERE` clause to filter the assemblies that will be included.  Since several JOINs are performed during this query, you may reference any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
 
 In the example analysis, we use `IN_QUERY="1=1"` which performs no filtering at all, but you will likely become find it useful to filter by species, location, and/or time range for your own analyses. For example, assuming you continue to use `tOrganisms` as intended, an `IN_QUERY` of `taxonomy_ID=1280` would restrict your analysis to _S. aureus_ isolates only.
 
