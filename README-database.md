@@ -26,7 +26,7 @@ In the example analysis, we use `IN_QUERY="1=1"` which performs no filtering at 
 
 ### What is `eRAP_ID`?
 
-Most of our columns have fairly transparent naming, but this one unfortunately does not. This column is an (anonymized) patient identifier. You will find this column in the `tIsolates`, `tIsolateTests`, and `tPatientEncounter` tables. Each patient in your dataset should be assigned a unique integer ID.
+Most of our columns have fairly transparent naming, but this one unfortunately does not. This column is an (anonymized) patient identifier named after one of our [data warehouses](https://erap.mssm.edu). You will find this column in the `tIsolates`, `tIsolateTests`, and `tPatientEncounter` tables. Each patient in your dataset should be assigned a unique integer ID.
 
 ### What are valid values for `encounter_type`?
 
