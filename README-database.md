@@ -34,7 +34,7 @@ This column is seen in the `tPatientEncounter` table, which tracks patient movem
 
 ### Do I have to use SQLite?
 
-You do not; you can use any database that [Sequel](https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html) can connect to. For example, you can use MySQL 
+You do not; you can use any database that [Sequel](https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html) has an adapter for. If you like MySQL, for instance, you may create a database, edit it with [phpMyAdmin](https://www.phpmyadmin.net/), and then connect to it with a `PATHOGENDB_URI` of the form `mysql2://user:password@host/db_name`.
 
 ## Schema
 
