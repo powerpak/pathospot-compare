@@ -53,14 +53,16 @@ You may notice that we chain through two intermediary tables, [`tStocks`](#tstoc
 
 ### tAssemblies
 
-Each row of this table contains metadata associated with each of the FASTA _sequences_ that you store in `IGB_DIR`. We call these sequences _assemblies_ because we always attempt to assemble complete genomes for each isolate from PacBio long reads, but technically, your sequences could be genome fragments, [core genomes](http://www.metagenomics.wiki/pdf/definition/pangenome), or smaller sets of  housekeeping genes as in [MLST](http://pubmlst.org/). Note that more incomplete sequences will lead to less optimal alignments and decrease your ability to distinguish closely related strains.
+Rows of this table associate metadata with each of the FASTA _sequences_ that you store in `IGB_DIR`. We call these sequences _assemblies_ because we attempt to assemble complete genomes for all isolates from PacBio long reads, but technically, your sequences can be genome fragments assembled from short reads, [core genomes](http://www.metagenomics.wiki/pdf/definition/pangenome), or smaller sets of housekeeping genes as in [MLST][]. Note that less complete sequences will lead to less optimal alignments and decrease your confidence in distinguishing closely related strains.
+
+[MLST]: http://pubmlst.org/
 
 Fields in this table are:
 
 - `auto_ID` (integer; PK): An autoincrementing ID for this table.
 - `extract_ID` (string; FK to [`tExtracts`](#textracts)): the extract that was sequenced to create this assembly.
-- `assembly_ID` (string): a string that uniquely identifies this assembly.
-- `mlst_subtype` (string): optional. The [MLST](https://pubmlst.org/) sequence type for this assembly, if you have it.
+- `assembly_ID` (string): a string that uniquely identifies this assembly. Can contain `A-Za-z0-9._-`.
+- `mlst_subtype` (string): optional. The [MLST][] sequence type for this assembly, if you have it.
 - `assembly_data_link` (string): The name of the FASTA file for this sequence (minus the extension), which is also the name of its parent directory within `IGB_DIR`. Like `assembly_ID`, this should also be unique.
 - `contig_count` (integer): optional. How many contigs are in your assembly, i.e. how many sequences are in the FASTA file.
 - `contig_N50` (integer): optional. The minimum contig length needed to [cover 50% of the genome](http://www.metagenomics.wiki/pdf/definition/assembly/n50), when they are ordered from longest to shortest, i.e. a length weighted median.
@@ -74,25 +76,44 @@ Before sequencing, we have to extract DNA from a stock, e.g. by pelleting cells 
 
 Fields in this table are:
 
-- `extract_ID` (string, PK): a unique string that identifies this extract.
+- `extract_ID` (string, PK): a unique string that identifies this extract. Can contain `A-Za-z0-9._-`.
 - `stock_ID` (string, FK to [`tStocks`](#tstocks)): which stock this extract was created from.
 
 ### tStocks
 
-For all isolates produced by our [clinical microbiology lab](https://icahn.mssm.edu/about/departments/pathology/clinical/microbiology/clinical-services) that we bank for sequencing, we create one or more frozen stocks. This table tracks the stocks and links them to the isolates they were created from.
+For all isolates produced by our [clinical microbiology lab][cml] that we bank for sequencing, we create one or more frozen stocks. This table tracks the stocks and links them to the isolates they were created from.
 
 Fields in this table are:
 
-- `stock_ID` (string, PK): a unique string that identifies this stock.
+- `stock_ID` (string, PK): a unique string that identifies this stock. Can contain `A-Za-z0-9._-`.
 - `isolate_ID` (string, FK to [`tIsolates`](#tisolates)): which isolate this stock was created from.
+
+[cml]: https://icahn.mssm.edu/about/departments/pathology/clinical/microbiology/clinical-services)
 
 ### tIsolates
 
+This table stores metadata on all isolates produced by our [clinical microbiology lab][cml] that are included in active surveillance programs. At a minimum, you need to provide metadata for isolates that are sequenced and have a corresponding entry in [`tAssemblies`](#tassemblies); however you may also provide metadata on isolates that have been recorded and/or banked but not chosen for sequencing, which will be layered on top of the visualizations.
 
+Typically, isolates are collected from positive clinical microbiology tests (such as blood or urine cultures, aka [`tIsolateTests`](#tisolatetest)) and therefore isolates can (optionally) be associated with entries in [`tIsolateTestResults`](#tisolatetestresults).
 
-FIXME: Continue table by table documentation.
+Fields in this table are:
+
+- `isolate_ID` (string, PK): a unique string that identifies this isolate. Can contain `A-Za-z0-9_-`.
+- `eRAP_ID` (integer): an opaque integer ID for the patient that the isolate was collected from. Every patient should have a unique ID. There is no table enumerating patients and patient-specific data in our schema, as these IDs refer directly to entries in a [clinical data warehouse][erap].
+- `organism_ID` (integer; FK to [`tOrganisms`](#torganisms)): the species that was identified for this isolate.
+- `hospital_ID` (integer; FK to [`tHospitals`](#thospitals)): which hospital this isolate was collected from.
+- `order_date` (datetime): when this isolate was collected; named because as a backup we use the timestamp for when collection was ordered when an exact collection time is unavailable.
+- `collection_unit` (string): the name of the unit within the hospital represented by `hospital_ID` where collection occurred. Can be any string.
+- `collection_sourceA` (string): optional. The first of two descriptors for how the specimen was collected.
+- `collection_sourceB` (string): optional. The second of two descriptors for how the specimen was collected.
+- `procedure_desc` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc.
+- `procedure_code` (string): the code used by the EMR to distinguish different procedures, sometimes useful when `procedure_desc` is ambiguous.
+
+[erap]: https://erap.mssm.edu
 
 ### tHospitals
+
+FIXME: Continue table by table documentation.
 
 ### tOrganisms
 
