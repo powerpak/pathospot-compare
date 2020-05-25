@@ -42,4 +42,44 @@ An abbreviated graphical summary of the schema follows (click to see the full ve
 
 <a href="https://pathospot.org/images/schema-large.png"><img src="https://pathospot.org/images/schema-compact.png" /></a>
 
-FIXME: table by table documentation coming soon.
+In this schema, the major landmarks are:
+
+- `tAssemblies`, which contains metadata on the _sequenced_ isolates and corresponds 1:1 with the FASTA/BED files in `IGB_DIR`--they are linked by `assembly_data_link` which contains the name of the FASTA file and its parent directory.
+- `tIsolates`, which contains metadata on both _sequenced_ and _collected but not sequenced_ isolates, and links them to patients via `eRAP_ID` and locations via `hospital_ID` and `collection_unit`.
+- `tPatientEncounter`, which contains data on patient movements through the hospitals
+- `tIsolateTests`, which contains data on microbiology tests for the patients (that may or may not yield isolates, as in `tIsolates`).
+
+### tAssemblies
+
+Each row of this table contains metadata associated with each of the FASTA _sequences_ that you store in `IGB_DIR`. We call these sequences _assemblies_ because we always attempt to fully assemble genomes for each isolate from PacBio long reads, but technically, your sequences could be genome fragments, [core genomes](http://www.metagenomics.wiki/pdf/definition/pangenome), or smaller sets of  housekeeping genes as in [MLST](http://pubmlst.org/), although these will lead to sub
+
+Fields in this table include:
+
+- `auto_ID` (integer; PK): An autoincrementing ID for this table.
+- `extract_ID` (FK to tExtracts): the extract that was sequenced to create this assembly
+- `assembly_ID` (string): a unique string that identifies this assembly. Must be unique.
+- `mlst_subtype` (string): optional. The [MLST](https://pubmlst.org/) sequence type for this assembly, if you have it.
+- `assembly_data_link` (string): The name of the FASTA file for this sequence (minus the extension), which is also the name of its parent directory within `IGB_DIR`.
+- `contig_count` (integer): optional. How many contigs are in your assembly, i.e. how many sequences are in the FASTA file.
+- `contig_N50` (integer): optional. The minimum contig length needed to [cover 50% of the genome](http://www.metagenomics.wiki/pdf/definition/assembly/n50), when they are ordered from longest to shortest, i.e. a length weighted median.
+- `contig_maxlength` (integer): optional. The length of the longest contig.
+- `contig_maxID` (string): optional. The ID of the longest contig.
+- `qc_failed` (integer): optional. We set this to a non-zero number if our automatic QC fails on an assembly, so it can be excluded from comparative analysis until it is fixed.
+
+### tExtracts
+
+FIXME: Continue table by table documentation.
+
+### tStocks
+
+### tIsolates
+
+### tHospitals
+
+### tOrganisms
+
+### tPatientEncounter
+
+### tIsolateTests
+
+### tIsolateTestResults
