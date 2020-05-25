@@ -113,7 +113,15 @@ Fields in this table are:
 
 ### tHospitals
 
-FIXME: Continue table by table documentation.
+Stores details on the hospitals included in your database.
+
+Fields in this table are:
+
+- `hospital_ID` (integer, PK): Unique integer for each hospital.
+- `hospital_abbreviation` (string): 2 or 3 letter code for the hospital, combined with the unit name to label locations in the visualizations. Does not need to be unique, but all potential combinations of `hospital_abbreviation` with `tIsolateTests.collection_unit`, `tIsolates.collection_unit`, and `tPatientEncounter.department_name` in your dataset should be unique.
+- `hospital_name` (string): optional. The full name of the hospital.
+- `hospital_city` (string): optional. City in which the hospital is located.
+- `hospital_country` (string): optional. Country in which the hospital is located.
 
 ### tOrganisms
 
