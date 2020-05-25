@@ -49,17 +49,19 @@ In this schema, the major landmarks are:
 - [`tPatientEncounter`](#tpatientencounter), which contains data on patient movements through the hospitals
 - [`tIsolateTests`](#tisolatetests), which contains data on microbiology tests for the patients (that may or may not yield isolates, as in [`tIsolates`](#tisolates)).
 
+You may notice that we chain through two intermediary tables, [`tStocks`](#tstocks) and [`tExtracts`](#textracts), to get from [`tAssemblies`](#tassemblies) to their respective [`tIsolates`](#tisolates). This is because we prefer to store the provenance of intermediary steps in our stocking and sequencing process in case they need to be debugged or repeated. If you don't need such detail, you can feel free to use the exact same string for `isolate_ID`, `stock_ID`, `extract_ID`, and `assembly_ID`, and simply create dummy entries in [`tStocks`](#tstocks) and [`tExtracts`](#textracts) for each assembly-isolate pair to link them all together.
+
 ### tAssemblies
 
-Each row of this table contains metadata associated with each of the FASTA _sequences_ that you store in `IGB_DIR`. We call these sequences _assemblies_ because we always attempt to fully assemble genomes for each isolate from PacBio long reads, but technically, your sequences could be genome fragments, [core genomes](http://www.metagenomics.wiki/pdf/definition/pangenome), or smaller sets of  housekeeping genes as in [MLST](http://pubmlst.org/), although these will lead to sub
+Each row of this table contains metadata associated with each of the FASTA _sequences_ that you store in `IGB_DIR`. We call these sequences _assemblies_ because we always attempt to assemble complete genomes for each isolate from PacBio long reads, but technically, your sequences could be genome fragments, [core genomes](http://www.metagenomics.wiki/pdf/definition/pangenome), or smaller sets of  housekeeping genes as in [MLST](http://pubmlst.org/). Note that more incomplete sequences will lead to less optimal alignments and decrease your ability to distinguish closely related strains.
 
-Fields in this table include:
+Fields in this table are:
 
 - `auto_ID` (integer; PK): An autoincrementing ID for this table.
-- `extract_ID` (FK to tExtracts): the extract that was sequenced to create this assembly
-- `assembly_ID` (string): a unique string that identifies this assembly. Must be unique.
+- `extract_ID` (string; FK to [`tExtracts`](#textracts)): the extract that was sequenced to create this assembly.
+- `assembly_ID` (string): a string that uniquely identifies this assembly.
 - `mlst_subtype` (string): optional. The [MLST](https://pubmlst.org/) sequence type for this assembly, if you have it.
-- `assembly_data_link` (string): The name of the FASTA file for this sequence (minus the extension), which is also the name of its parent directory within `IGB_DIR`.
+- `assembly_data_link` (string): The name of the FASTA file for this sequence (minus the extension), which is also the name of its parent directory within `IGB_DIR`. Like `assembly_ID`, this should also be unique.
 - `contig_count` (integer): optional. How many contigs are in your assembly, i.e. how many sequences are in the FASTA file.
 - `contig_N50` (integer): optional. The minimum contig length needed to [cover 50% of the genome](http://www.metagenomics.wiki/pdf/definition/assembly/n50), when they are ordered from longest to shortest, i.e. a length weighted median.
 - `contig_maxlength` (integer): optional. The length of the longest contig.
@@ -68,11 +70,27 @@ Fields in this table include:
 
 ### tExtracts
 
-FIXME: Continue table by table documentation.
+Before sequencing, we have to extract DNA from a stock, e.g. by pelleting cells and using a [DNA extraction kit](https://www.qiagen.com/lu/products/top-sellers/dneasy-blood-and-tissue-kit/). These extracts are recorded separately in this table, as it may need to be performed multiple times for a stock, e.g., if we need to resequence the same stock multiple times.
+
+Fields in this table are:
+
+- `extract_ID` (string, PK): a unique string that identifies this extract.
+- `stock_ID` (string, FK to [`tStocks`](#tstocks)): which stock this extract was created from.
 
 ### tStocks
 
+For all isolates produced by our [clinical microbiology lab](https://icahn.mssm.edu/about/departments/pathology/clinical/microbiology/clinical-services) that we bank for sequencing, we create one or more frozen stocks. This table tracks the stocks and links them to the isolates they were created from.
+
+Fields in this table are:
+
+- `stock_ID` (string, PK): a unique string that identifies this stock.
+- `isolate_ID` (string, FK to [`tIsolates`](#tisolates)): which isolate this stock was created from.
+
 ### tIsolates
+
+
+
+FIXME: Continue table by table documentation.
 
 ### tHospitals
 
