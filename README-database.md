@@ -88,7 +88,7 @@ Fields in this table are:
 - `stock_ID` (string, PK): a unique string that identifies this stock. Can contain `A-Za-z0-9._-`.
 - `isolate_ID` (string, FK to [`tIsolates`](#tisolates)): which isolate this stock was created from.
 
-[cml]: https://icahn.mssm.edu/about/departments/pathology/clinical/microbiology/clinical-services)
+[cml]: https://icahn.mssm.edu/about/departments/pathology/clinical/microbiology/clinical-services
 
 ### tIsolates
 
