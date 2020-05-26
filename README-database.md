@@ -51,16 +51,18 @@ In this schema, the major landmarks are:
 
 You may notice that we chain through two intermediary tables, [`tStocks`](#tstocks) and [`tExtracts`](#textracts), to get from [`tAssemblies`](#tassemblies) to their respective [`tIsolates`](#tisolates). This is because we prefer to store the provenance of intermediary steps in our stocking and sequencing process in case they need to be debugged or repeated. If you don't need such detail, you can feel free to use the exact same string for `isolate_ID`, `stock_ID`, `extract_ID`, and `assembly_ID`, and simply create dummy entries in [`tStocks`](#tstocks) and [`tExtracts`](#textracts) for each assembly-isolate pair to link them all together.
 
+You may add columns to any of the tables to store additional fields, or additional tables; the following represents a minimal schema rather than an exact requirement. In the following descriptions, **PK** refers to a primary key, and **FK** refers to a foreign key.
+
 ### tAssemblies
 
 Rows of this table associate metadata with each of the FASTA _sequences_ that you store in `IGB_DIR`. We call these sequences _assemblies_ because we attempt to assemble complete genomes for all isolates from PacBio long reads, but technically, your sequences can be genome fragments assembled from short reads, [core genomes](http://www.metagenomics.wiki/pdf/definition/pangenome), or smaller sets of housekeeping genes as in [MLST][]. Note that less complete sequences will lead to less optimal alignments and decrease your confidence in distinguishing closely related strains.
 
 [MLST]: http://pubmlst.org/
 
-Fields in this table are:
+This table should include the following fields:
 
-- `auto_ID` (integer; PK): An autoincrementing ID for this table.
-- `extract_ID` (string; FK to [`tExtracts`](#textracts)): the extract that was sequenced to create this assembly.
+- `auto_ID` (integer; **PK**): An autoincrementing integer ID for this table.
+- `extract_ID` (string; **FK** to [`tExtracts`](#textracts)): the extract that was sequenced to create this assembly.
 - `assembly_ID` (string): a string that uniquely identifies this assembly. Can contain `A-Za-z0-9._-`.
 - `mlst_subtype` (string): optional. The [MLST][] sequence type for this assembly, if you have it.
 - `assembly_data_link` (string): The name of the FASTA file for this sequence (minus the extension), which is also the name of its parent directory within `IGB_DIR`. Like `assembly_ID`, this should also be unique.
@@ -74,19 +76,19 @@ Fields in this table are:
 
 Before sequencing, we have to extract DNA from a stock, e.g. by pelleting cells and using a [DNA extraction kit](https://www.qiagen.com/lu/products/top-sellers/dneasy-blood-and-tissue-kit/). These extracts are recorded separately in this table, as it may need to be performed multiple times for a stock, e.g., if we need to resequence the same stock multiple times.
 
-Fields in this table are:
+This table should include the following fields:
 
-- `extract_ID` (string, PK): a unique string that identifies this extract. Can contain `A-Za-z0-9._-`.
-- `stock_ID` (string, FK to [`tStocks`](#tstocks)): which stock this extract was created from.
+- `extract_ID` (string, **PK**): a unique string that identifies this extract. Can contain `A-Za-z0-9._-`.
+- `stock_ID` (string, **FK** to [`tStocks`](#tstocks)): which stock this extract was created from.
 
 ### tStocks
 
 For all isolates produced by our [clinical microbiology lab][cml] that we bank for sequencing, we create one or more frozen stocks. This table tracks the stocks and links them to the isolates they were created from.
 
-Fields in this table are:
+This table should include the following fields:
 
-- `stock_ID` (string, PK): a unique string that identifies this stock. Can contain `A-Za-z0-9._-`.
-- `isolate_ID` (string, FK to [`tIsolates`](#tisolates)): which isolate this stock was created from.
+- `stock_ID` (string, **PK**): a unique string that identifies this stock. Can contain `A-Za-z0-9._-`.
+- `isolate_ID` (string, **FK** to [`tIsolates`](#tisolates)): which isolate this stock was created from.
 
 [cml]: https://icahn.mssm.edu/about/departments/pathology/clinical/microbiology/clinical-services
 
@@ -96,14 +98,14 @@ This table stores metadata on all isolates produced by our [clinical microbiolog
 
 Typically, isolates are collected from positive clinical microbiology tests (such as blood or urine cultures, aka [`tIsolateTests`](#tisolatetest)) and therefore isolates can (optionally) be associated with entries in [`tIsolateTestResults`](#tisolatetestresults).
 
-Fields in this table are:
+This table should include the following fields:
 
-- `isolate_ID` (string, PK): a unique string that identifies this isolate. Can contain `A-Za-z0-9_-`.
+- `isolate_ID` (string, **PK**): a unique string that identifies this isolate. Can contain `A-Za-z0-9_-`.
 - `eRAP_ID` (integer): an opaque integer ID for the patient that the isolate was collected from. Every patient should have a unique ID. There is no table enumerating patients and patient-specific data in our schema, as these IDs refer directly to entries in a [clinical data warehouse][erap].
-- `organism_ID` (integer; FK to [`tOrganisms`](#torganisms)): the species that was identified for this isolate.
-- `hospital_ID` (integer; FK to [`tHospitals`](#thospitals)): which hospital this isolate was collected from.
+- `organism_ID` (integer; **FK** to [`tOrganisms`](#torganisms)): the species that was identified for this isolate.
+- `hospital_ID` (integer; **FK** to [`tHospitals`](#thospitals)): which hospital this isolate was collected from.
 - `order_date` (datetime): when this isolate was collected; named because as a backup we use the timestamp for when collection was ordered when an exact collection time is unavailable.
-- `collection_unit` (string): the name of the unit within the hospital represented by `hospital_ID` where collection occurred. Can be any string.
+- `collection_unit` (string): the name of the unit within the hospital [system] represented by `hospital_ID` where collection occurred. Can be any string.
 - `collection_sourceA` (string): optional. The first of two descriptors for how the specimen was collected.
 - `collection_sourceB` (string): optional. The second of two descriptors for how the specimen was collected.
 - `procedure_desc` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc.
@@ -113,11 +115,11 @@ Fields in this table are:
 
 ### tHospitals
 
-Stores details on the hospitals included in your database.
+Stores details on the hospitals included in your database. We tend to use this to refer to hospital _systems_, e.g., including various Mount Sinai affiliated outpatient clinics underneath the umbrella of each parent hospital. If this is not significant in your dataset, you can simply associate all locations with the same `hospital_ID`.
 
-Fields in this table are:
+This table should include the following fields:
 
-- `hospital_ID` (integer, PK): Unique integer for each hospital.
+- `hospital_ID` (integer, **PK**): Unique integer ID for each hospital.
 - `hospital_abbreviation` (string): 2 or 3 letter code for the hospital, combined with the unit name to label locations in the visualizations. Multiple hospitals can share the same abbreviation, _however_ all potential combinations of `hospital_abbreviation` with `tIsolateTests.collection_unit`, `tIsolates.collection_unit`, and `tPatientEncounter.department_name` in your data _must_ be unique.
 - `hospital_name` (string): optional. The full name of the hospital.
 - `hospital_city` (string): optional. City in which the hospital is located.
@@ -127,13 +129,13 @@ Fields in this table are:
 
 Details of all the different organisms (i.e. species or subspecies) that are included in your dataset. Our sample dataset includes many common organisms that are revealed by routine clinical microbiological testing; you may continue to use it as is, pare it down to only the organisms you study, expand it as needed, or rebuild it entirely.
 
-Fields in this table are:
+This table should include the following fields:
 
-- `organism_ID` (integer, PK): Unique integer for each organism.
+- `organism_ID` (integer, **PK**): Unique integer ID for each organism.
 - `full_name`	(string): optional. The full family + species name, e.g. "Staphylococcus aureus".
 - `abbreviated_name` (string): optional. An abbreviated name for this species, e.g. "S. aureus".
-- `wiki_link` (string): optional. The name of the corresponding Wikipedia page on this organism, e.g. the part after `https://en.wikipedia.org/wiki/`...
-- `taxonomy_ID` (integer): optional. The NCBI taxonomy ID for this species, e.g., the part after `https://www.ncbi.nlm.nih.gov/taxonomy/`...
+- `wiki_link` (string): optional. The name of the corresponding Wikipedia page on this organism, e.g. the part of the URL after `https://en.wikipedia.org/wiki/`...
+- `taxonomy_ID` (integer): optional. The corresponding NCBI taxonomy ID for this species, e.g., the part of the URL after `https://www.ncbi.nlm.nih.gov/taxonomy/`...
 - `gram` (string): optional. Gram staining for this organism, e.g. positive or negative.
 - `tax_superkingdom` (string): optional. The superkingdom for this species, in biological [taxonomic rank][tr].
 - `tax_phylum` (string): optional. The phylum for this species, in biological [taxonomic rank][tr].
@@ -144,6 +146,53 @@ Fields in this table are:
 
 ### tPatientEncounter
 
+This table contains a row for each _encounter_ between a patient and a particular hospital, usually generated from some combination of [admit-discharge-transfer][adt] (ADT) and other electronic medical record (EMR) data. An encounter is a rather [generic concept][enc] in EMRs for "an interaction between a patient and healthcare provider(s) for the purpose of providing healthcare service(s) or assessing the health status of a patient," but maps roughly to office visits (for outpatient encounters) and a continuous stay in at least one unit at a medical facility (for inpatient encounters). In our schema, we furthermore break down inpatient encounters into separate entries for each unit that the patient passes through (e.g., ED, inpatient ward, ICU), with each transfer event denoted by a `transfer_to` value on the preceding entry to "link" it to the next one.
+
+[adt]: https://en.wikipedia.org/wiki/Admission,_discharge,_and_transfer_system
+[enc]: https://www.hl7.org/fhir/encounter-definitions.html
+
+This data is primarily used to build the [dendro-timeline](https://github.com/powerpak/pathospot-visualize#dendro-timelinephp) visualization.
+
+This table should include the following fields:
+
+- `auto_ID` (integer, **PK**): An autoincrementing integer ID for this table.
+- `eRAP_ID` (integer): An opaque integer ID for the patient that the isolate was collected from. Every patient should have a unique ID. There is no table enumerating patients and patient-specific data in our schema, as these IDs refer directly to entries in a [clinical data warehouse][erap].
+- `start_date` (datetime): Timestamp for when the encounter began.
+- `end_date` (datetime): Timestamp for when the encounter ended.	
+- `hospital_ID` (integer, **FK** to [`tHospitals`](#thospitals)): which hospital or hospital system this encounter occurred within.
+- `department_name` (string): The name of the unit, department, or clinic in which this encounter occurred, e.g. "MICU".
+- `transfer_to` (string): optional. If during an inpatient stay this patient transferred to another unit at `end_date`, the `department_name` of the destination should be included here. Leave as the empty string or NULL if this encounter did not end with a transfer to another unit.	
+- `encounter_type` (string): Free-form text that describes what kind of encounter occurred; the special value "Hospital Encounter" should be used for all inpatient encounters. For outpatient encounters, values like "Office Visit", "Elective Surgery", "Dialysis" and so on could be used.
+- `age` (integer): optional. The age of the patient during this particular encounter.
+- `sex` (string): optional. The sex recorded for the patient for this particular encounter.
+
 ### tIsolateTests
 
+During their various encounters, patients may receive microbiological tests that provide insight on when a patient was first infected or how long it took them to clear a particular infection. Although not all positive cultures will merit sequencing, these other tests (including negative results) can provide helpful clinical context for patients involved in an outbreak, and therefore we support layering these data onto the [dendro-timeline][dt] visualization. Note that this table is _entirely optional_, and if it contains no rows, then the visualizations will continue to function appropriately withou the extra data.
+
+[dt]: https://github.com/powerpak/pathospot-visualize#dendro-timelinephp
+
+Each row of this table represents one microbiological test performed on a patient identified by their `eRAP_ID`. As a single test may have zero, one, or multiple results (e.g. zero when it has not yet resulted, and multiple if the result is updated or if multiple isolates are found in one test), we store the results separately, in [`tIsolateTestResults`](#tisolatetestresults). Often this data will be extractable from the EMR or directly from the clinical microbiology laboratory information management system (LIMS).
+
+This table should include the following fields:
+
+- `test_ID` (integer, **PK**): A unique ID for each test performed.
+- `eRAP_ID` (integer): An opaque integer ID for the patient that the isolate was collected from. Every patient should have a unique ID. There is no table enumerating patients and patient-specific data in our schema, as these IDs refer directly to entries in a [clinical data warehouse][erap].
+- `test_date` (datetime): A timestamp for when the test was performed (we use the collection timestamp for the specimen, or when this is not available, the order timestamp).	
+- `hospital_ID` (integer, **FK** to [`tHospitals`](#thospitals)): which hospital or hospital system this encounter occurred within.
+tHospitals
+- `procedure_name` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc.; analogous to `tIsolates.procedure_desc`.
+- `collection_unit` (string): the name of the unit within the hospital [system] represented by `hospital_ID` where collection occurred. Can be any string. analogous to `tIsolates.collection_unit`.
+
 ### tIsolateTestResults
+
+Each row of this table represents a result for a microbiological test recorded in [`tIsolateTests`](#tisolatetests). Tests can have zero, one, or multiple results (e.g. zero when it has not yet resulted, and multiple if the result is updated or if multiple isolates are found in one test). Note that this table is _entirely optional_, and if it contains no rows, then the visualizations will continue to function appropriately withou the extra data.
+
+This table should include the following fields:
+
+- `result_ID` (integer, **PK**): A unique ID for each test result recorded in this table.
+- `test_ID` (integer, **FK** to [`tIsolateTestResults`](#thospitals)): which microbiological test this result is associated with. Tests can have zero, one, or multiple results.
+- `test_result` (string): A summary of the test outcome. Valid values include the exact strings "positive" and "negative"; any result that is not "negative" is treated equivalently to "positive" for the purposes of drawing the visualizations.
+- `description` (string): optional. Additional text explaining the test outcome can be included here, such as "No growth for 5 days."
+- `organism_ID` (integer, **FK** to [`tOrganisms`](#torganisms)): optional. If the test result refers to a specific organism, this can be annotated in this field.
+- `isolate_ID` (string, **FK** to [`tIsolates`](#tisolates)): optional. If this test result produced an isolate that was banked and recorded in this database, this link can be stored in this field.
