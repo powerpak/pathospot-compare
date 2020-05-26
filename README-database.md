@@ -118,12 +118,29 @@ Stores details on the hospitals included in your database.
 Fields in this table are:
 
 - `hospital_ID` (integer, PK): Unique integer for each hospital.
-- `hospital_abbreviation` (string): 2 or 3 letter code for the hospital, combined with the unit name to label locations in the visualizations. Does not need to be unique, but all potential combinations of `hospital_abbreviation` with `tIsolateTests.collection_unit`, `tIsolates.collection_unit`, and `tPatientEncounter.department_name` in your dataset should be unique.
+- `hospital_abbreviation` (string): 2 or 3 letter code for the hospital, combined with the unit name to label locations in the visualizations. Multiple hospitals can share the same abbreviation, _however_ all potential combinations of `hospital_abbreviation` with `tIsolateTests.collection_unit`, `tIsolates.collection_unit`, and `tPatientEncounter.department_name` in your data _must_ be unique.
 - `hospital_name` (string): optional. The full name of the hospital.
 - `hospital_city` (string): optional. City in which the hospital is located.
 - `hospital_country` (string): optional. Country in which the hospital is located.
 
 ### tOrganisms
+
+Details of all the different organisms (i.e. species or subspecies) that are included in your dataset. Our sample dataset includes many common organisms that are revealed by routine clinical microbiological testing; you may continue to use it as is, pare it down to only the organisms you study, expand it as needed, or rebuild it entirely.
+
+Fields in this table are:
+
+- `organism_ID` (integer, PK): Unique integer for each organism.
+- `full_name`	(string): optional. The full family + species name, e.g. "Staphylococcus aureus".
+- `abbreviated_name` (string): optional. An abbreviated name for this species, e.g. "S. aureus".
+- `wiki_link` (string): optional. The name of the corresponding Wikipedia page on this organism, e.g. the part after `https://en.wikipedia.org/wiki/`...
+- `taxonomy_ID` (integer): optional. The NCBI taxonomy ID for this species, e.g., the part after `https://www.ncbi.nlm.nih.gov/taxonomy/`...
+- `gram` (string): optional. Gram staining for this organism, e.g. positive or negative.
+- `tax_superkingdom` (string): optional. The superkingdom for this species, in biological [taxonomic rank][tr].
+- `tax_phylum` (string): optional. The phylum for this species, in biological [taxonomic rank][tr].
+- `tax_class` (string): optional. The class for this species, in biological [taxonomic rank][tr].
+- `tax_order` (string): optional. The order for this species, in biological [taxonomic rank][tr].
+
+[tr]: https://en.wikipedia.org/wiki/Taxonomic_rank
 
 ### tPatientEncounter
 
