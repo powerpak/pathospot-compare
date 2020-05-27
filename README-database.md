@@ -34,7 +34,7 @@ This column is seen in the [`tPatientEncounter`](#tpatientencounter) table, whic
 
 ### Do I have to use SQLite?
 
-You do not; you can use any database that [Sequel](https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html) has an adapter for. If you like MySQL, for instance, you may create a database, edit it with [phpMyAdmin](https://www.phpmyadmin.net/), and then connect to it with a `PATHOGENDB_URI` of the form `mysql2://user:password@host/db_name`.
+You do not; you can use any database that [Sequel](https://sequel.jeremyevans.net/), our Ruby database library, has adapters for. If you like MySQL, for instance, you may create a database, edit it with [phpMyAdmin](https://www.phpmyadmin.net/), and then connect to it with a `PATHOGENDB_URI` of the form `mysql2://user:password@host/db_name`. 
 
 ## Schema
 
@@ -51,7 +51,7 @@ In this schema, the major landmarks are:
 
 You may notice that we chain through two intermediary tables, [`tStocks`](#tstocks) and [`tExtracts`](#textracts), to get from [`tAssemblies`](#tassemblies) to their respective [`tIsolates`](#tisolates). This is because we prefer to store the provenance of intermediary steps in our stocking and sequencing process in case they need to be debugged or repeated. If you don't need such detail, you can feel free to use the exact same string for `isolate_ID`, `stock_ID`, `extract_ID`, and `assembly_ID`, and simply create dummy entries in [`tStocks`](#tstocks) and [`tExtracts`](#textracts) for each assembly-isolate pair to link them all together.
 
-You may add columns to any of the tables to store additional fields, or additional tables; the following represents a minimal schema rather than an exact requirement. In the following descriptions, **PK** refers to a primary key, and **FK** refers to a foreign key.
+You may add columns to any of the tables to store additional fields, or additional tables; the following represents a minimal schema rather than an exact requirement. In the following descriptions, **PK** refers to a _primary key_, and **FK** refers to a _foreign key_.
 
 ### tAssemblies
 
@@ -128,7 +128,7 @@ This table should include the following fields:
 
 ### tOrganisms
 
-Details of all the different organisms (i.e. species or subspecies) that are included in your dataset. Our sample dataset includes many common organisms that are revealed by routine clinical microbiological testing; you may continue to use it as is, pare it down to only the organisms you study, expand it as needed, or rebuild it entirely.
+Details of all the different organisms (i.e. species or subspecies) that are included in your dataset. Our sample dataset includes many common organisms that are revealed by routine clinical microbiological testing; you may continue to use it as is, pare it down to only the organisms you study, expand it as needed, or rebuild it entirely. 
 
 This table should include the following fields:
 
@@ -142,8 +142,8 @@ This table should include the following fields:
 - `tax_phylum` (string): optional. The phylum for this species, in biological [taxonomic rank][tr], e.g. "Firmicutes".
 - `tax_class` (string): optional. The class for this species, in biological [taxonomic rank][tr], e.g. "Bacilli".
 - `tax_order` (string): optional. The order for this species, in biological [taxonomic rank][tr], e.g. "Lactobacillales".
-- `tax_family` (string): optional. The class for this species, in biological [taxonomic rank][tr], e.g. "Enterococcaceae".
-- `tax_genus` (string): optional. The order for this species, in biological [taxonomic rank][tr], e.g. "Enterococcus".
+- `tax_family` (string): optional. The family for this species, in biological [taxonomic rank][tr], e.g. "Enterococcaceae".
+- `tax_genus` (string): optional. The genus for this species, in biological [taxonomic rank][tr], e.g. "Enterococcus".
 
 [tr]: https://en.wikipedia.org/wiki/Taxonomic_rank
 
