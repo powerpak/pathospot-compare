@@ -197,7 +197,7 @@ _Note that this table is entirely optional, and if it contains no rows, then the
 This table should include the following fields:
 
 - `result_ID` (integer, **PK**): A unique ID for each test result recorded in this table.
-- `test_ID` (integer, **FK** to [`tIsolateTestResults`](#thospitals)): which microbiological test this result is associated with. Tests can have zero, one, or multiple results.
+- `test_ID` (integer, **FK** to [`tIsolateTestResults`](#tisolatetestresults)): which microbiological test this result is associated with. Tests can have zero, one, or multiple results.
 - `test_result` (string): A summary of the test outcome. Valid values include the exact strings "positive" and "negative"; any result that is not "negative" is treated equivalently to "positive" for the purposes of drawing the visualizations.
 - `description` (string): optional. Additional text explaining the test outcome can be included here, such as "No growth for 5 days."
 - `organism_ID` (integer, **FK** to [`tOrganisms`](#torganisms)): optional. If the test result refers to a specific organism, this can be annotated in this field. If not, set to **NULL** or the empty string.
