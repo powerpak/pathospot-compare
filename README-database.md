@@ -8,7 +8,7 @@ The [example dataset (tar.gz)](https://pathospot.org/data/mrsa.tar.gz) includes 
 
 [SQLite]: https://www.sqlite.org/index.html
 
-Below, we answer the most frequently asked questions, and then provide some formal documentation on the database schema.
+Below, we answer the most [frequently asked questions](#faq), and then provide some formal documentation on the [database schema](#schema).
 
 ## FAQ
 
