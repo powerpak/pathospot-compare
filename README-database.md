@@ -154,7 +154,7 @@ This table contains a row for each _encounter_ between a patient and a particula
 [adt]: https://en.wikipedia.org/wiki/Admission,_discharge,_and_transfer_system
 [enc]: https://www.hl7.org/fhir/encounter-definitions.html
 
-This data is primarily used to build the [dendro-timeline](https://github.com/powerpak/pathospot-visualize#dendro-timelinephp) visualization.
+This data is primarily used to build the [dendro-timeline](https://github.com/powerpak/pathospot-visualize#dendro-timelinephp) visualization. _Note that this table is entirely optional, and if it contains no rows, then the timelines will simply appear blank._
 
 This table should include the following fields:
 
@@ -171,7 +171,9 @@ This table should include the following fields:
 
 ### tIsolateTests
 
-During their various encounters, patients may receive microbiological tests that provide insight on when a patient was first infected or how long it took them to clear a particular infection. Although not all positive cultures will merit sequencing, these other tests (including negative results) can provide helpful clinical context for patients involved in an outbreak, and therefore we support layering these data onto the [dendro-timeline][dt] visualization. Note that this table is _entirely optional_, and if it contains no rows, then the visualizations will continue to function appropriately withou the extra data.
+During their various encounters, patients may receive microbiological tests that provide insight on when a patient was first infected or how long it took them to clear a particular infection. Although not all positive cultures will merit sequencing, these other tests (including negative results) can provide helpful clinical context for patients involved in an outbreak, and therefore we support layering these data onto the [dendro-timeline][dt] visualization.
+
+_Note that this table is entirely optional, and if it contains no rows, then the visualizations will continue to function appropriately without the extra data._
 
 [dt]: https://github.com/powerpak/pathospot-visualize#dendro-timelinephp
 
@@ -188,7 +190,9 @@ This table should include the following fields:
 
 ### tIsolateTestResults
 
-Each row of this table represents a result for a microbiological test recorded in [`tIsolateTests`](#tisolatetests). Tests can have zero, one, or multiple results (e.g. zero when it has not yet resulted, and multiple if the result is updated or if multiple isolates are found in one test). Note that this table is _entirely optional_, and if it contains no rows, then the visualizations will continue to function appropriately withou the extra data.
+Each row of this table represents a result for a microbiological test recorded in [`tIsolateTests`](#tisolatetests). Tests can have zero, one, or multiple results (e.g. zero when it has not yet resulted, and multiple if the result is updated or if multiple isolates are found in one test). 
+
+_Note that this table is entirely optional, and if it contains no rows, then the visualizations will continue to function appropriately without the extra data._
 
 This table should include the following fields:
 
