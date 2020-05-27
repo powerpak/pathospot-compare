@@ -63,14 +63,15 @@ This table should include the following fields:
 
 - `auto_ID` (integer; **PK**): An autoincrementing integer ID for this table.
 - `extract_ID` (string; **FK** to [`tExtracts`](#textracts)): the extract that was sequenced to create this assembly.
-- `assembly_ID` (string): a string that uniquely identifies this assembly. Can contain `A-Za-z0-9._-`.
+- `assembly_ID` (string): a string that uniquely identifies this assembly. Can contain `A-Za-z0-9._-`; we choose to use numeric strings.
 - `mlst_subtype` (string): optional. The [MLST][] sequence type for this assembly, if you have it.
 - `assembly_data_link` (string): The name of the FASTA file for this sequence (minus the extension), which is also the name of its parent directory within `IGB_DIR`. Like `assembly_ID`, this should also be unique.
-- `contig_count` (integer): optional. How many contigs are in your assembly, i.e. how many sequences are in the FASTA file.
-- `contig_N50` (integer): optional. The minimum contig length needed to [cover 50% of the genome](http://www.metagenomics.wiki/pdf/definition/assembly/n50), when they are ordered from longest to shortest, i.e. a length weighted median.
-- `contig_maxlength` (integer): optional. The length of the longest contig.
-- `contig_maxID` (string): optional. The ID of the longest contig.
-- `qc_failed` (integer): optional. We set this to a non-zero number if our automatic QC fails on an assembly, so it can be excluded from comparative analysis until it is fixed.
+- `contig_count` (integer): How many contigs are in your assembly, i.e. the number of separate sequences in the FASTA file.
+- `contig_N50` (integer): The minimum contig length needed to [cover 50% of the genome](http://www.metagenomics.wiki/pdf/definition/assembly/n50), when they are ordered from longest to shortest, i.e. a length weighted median.
+- `contig_maxlength` (integer): The length of the longest contig.
+- `contig_maxID` (string): The ID of the longest contig. In a FASTA file, this is the identifier on the line starting with `>` or `;` preceding the lines of sequence data for that contig.
+- `qc_failed` (integer): optional. We set this to a non-zero number if our automatic QC fails on an assembly, so it can be excluded from comparative analysis until it is fixed. Otherwise, set it to **0**.
+- `contig_sumlength` (integer): The sum of the lengths of all contigs.
 
 ### tExtracts
 
@@ -106,10 +107,10 @@ This table should include the following fields:
 - `hospital_ID` (integer; **FK** to [`tHospitals`](#thospitals)): which hospital this isolate was collected from.
 - `order_date` (datetime): when this isolate was collected; named because as a backup we use the timestamp for when collection was ordered when an exact collection time is unavailable.
 - `collection_unit` (string): the name of the unit within the hospital [system] represented by `hospital_ID` where collection occurred. Can be any string.
-- `collection_sourceA` (string): optional. The first of two descriptors for how the specimen was collected.
-- `collection_sourceB` (string): optional. The second of two descriptors for how the specimen was collected.
-- `procedure_desc` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc.
-- `procedure_code` (string): the code used by the EMR to distinguish different procedures, sometimes useful when `procedure_desc` is ambiguous.
+- `collection_sourceA` (string): optional. The first of two descriptors for how the specimen was collected, e.g. "Venipuncture".
+- `collection_sourceB` (string): optional. The second of two descriptors for how the specimen was collected, e.g. "Blood".
+- `procedure_desc` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc. Although we use codes directly from our EMR, e.g. "Culture-blood", you may use more human-friendly names.
+- `procedure_code` (string): optional. The code used by the EMR to distinguish different procedures, sometimes useful when `procedure_desc` is ambiguous. We simply store codes from our EMR that have no external meaning.
 
 [erap]: https://erap.mssm.edu
 
@@ -122,8 +123,8 @@ This table should include the following fields:
 - `hospital_ID` (integer, **PK**): Unique integer ID for each hospital.
 - `hospital_abbreviation` (string): 2 or 3 letter code for the hospital, combined with the unit name to label locations in the visualizations. Multiple hospitals can share the same abbreviation, _however_ all potential combinations of `hospital_abbreviation` with `tIsolateTests.collection_unit`, `tIsolates.collection_unit`, and `tPatientEncounter.department_name` in your data _must_ be unique.
 - `hospital_name` (string): optional. The full name of the hospital.
-- `hospital_city` (string): optional. City in which the hospital is located.
-- `hospital_country` (string): optional. Country in which the hospital is located.
+- `hospital_city` (string): optional. City in which the hospital is located, e.g., "New York". 
+- `hospital_country` (string): optional. Country in which the hospital is located, e.g., "United States".
 
 ### tOrganisms
 
@@ -132,15 +133,17 @@ Details of all the different organisms (i.e. species or subspecies) that are inc
 This table should include the following fields:
 
 - `organism_ID` (integer, **PK**): Unique integer ID for each organism.
-- `full_name`	(string): optional. The full family + species name, e.g. "Staphylococcus aureus".
-- `abbreviated_name` (string): optional. An abbreviated name for this species, e.g. "S. aureus".
+- `full_name`	(string): optional. The full genus + species name, e.g. "Staphylococcus aureus". May also contain subspecies and other qualifiers, e.g. "Methicillin-resistant".
+- `abbreviated_name` (string): optional. An abbreviated name for this species that can be used within filenames and URLs, e.g. "S_aureus". Can contain `A-Za-z0-9_-`.
 - `wiki_link` (string): optional. The name of the corresponding Wikipedia page on this organism, e.g. the part of the URL after `https://en.wikipedia.org/wiki/`...
 - `taxonomy_ID` (integer): optional. The corresponding NCBI taxonomy ID for this species, e.g., the part of the URL after `https://www.ncbi.nlm.nih.gov/taxonomy/`...
-- `gram` (string): optional. Gram staining for this organism, e.g. positive or negative.
-- `tax_superkingdom` (string): optional. The superkingdom for this species, in biological [taxonomic rank][tr].
-- `tax_phylum` (string): optional. The phylum for this species, in biological [taxonomic rank][tr].
-- `tax_class` (string): optional. The class for this species, in biological [taxonomic rank][tr].
-- `tax_order` (string): optional. The order for this species, in biological [taxonomic rank][tr].
+- `gram` (string): optional. Gram staining pattern for this organism, e.g. "Positive or "Negative". Can be left blank for organisms that do not fall into either of those categories.
+- `tax_superkingdom` (string): optional. The superkingdom for this species, in biological [taxonomic rank][tr], e.g. "Bacteria".
+- `tax_phylum` (string): optional. The phylum for this species, in biological [taxonomic rank][tr], e.g. "Firmicutes".
+- `tax_class` (string): optional. The class for this species, in biological [taxonomic rank][tr], e.g. "Bacilli".
+- `tax_order` (string): optional. The order for this species, in biological [taxonomic rank][tr], e.g. "Lactobacillales".
+- `tax_family` (string): optional. The class for this species, in biological [taxonomic rank][tr], e.g. "Enterococcaceae".
+- `tax_genus` (string): optional. The order for this species, in biological [taxonomic rank][tr], e.g. "Enterococcus".
 
 [tr]: https://en.wikipedia.org/wiki/Taxonomic_rank
 
@@ -160,11 +163,11 @@ This table should include the following fields:
 - `start_date` (datetime): Timestamp for when the encounter began.
 - `end_date` (datetime): Timestamp for when the encounter ended.	
 - `hospital_ID` (integer, **FK** to [`tHospitals`](#thospitals)): which hospital or hospital system this encounter occurred within.
-- `department_name` (string): The name of the unit, department, or clinic in which this encounter occurred, e.g. "MICU".
+- `department_name` (string): optional. The name of the unit, department, or clinic in which this encounter occurred, e.g. "MICU". Although optional, if you don't include a value here, the encounter won't show up in any of the visualizations.
 - `transfer_to` (string): optional. If during an inpatient stay this patient transferred to another unit at `end_date`, the `department_name` of the destination should be included here. Leave as the empty string or NULL if this encounter did not end with a transfer to another unit.	
 - `encounter_type` (string): Free-form text that describes what kind of encounter occurred; the special value "Hospital Encounter" should be used for all inpatient encounters. For outpatient encounters, values like "Office Visit", "Elective Surgery", "Dialysis" and so on could be used.
-- `age` (integer): optional. The age of the patient during this particular encounter.
-- `sex` (string): optional. The sex recorded for the patient for this particular encounter.
+- `age` (integer): optional. The age of the patient during this particular encounter, in years. If you choose not to provide this, use the value **-1**.  It is not currently displayed in any of the visualizations.
+- `sex` (string): optional. The sex recorded for the patient for this particular encounter, which is either "Male", "Female", or any other value. You may choose to use this for either sex at birth or gender identity. It is not currently displayed in any of the visualizations.
 
 ### tIsolateTests
 
@@ -180,8 +183,7 @@ This table should include the following fields:
 - `eRAP_ID` (integer): An opaque integer ID for the patient that the isolate was collected from. Every patient should have a unique ID. There is no table enumerating patients and patient-specific data in our schema, as these IDs refer directly to entries in a [clinical data warehouse][erap].
 - `test_date` (datetime): A timestamp for when the test was performed (we use the collection timestamp for the specimen, or when this is not available, the order timestamp).	
 - `hospital_ID` (integer, **FK** to [`tHospitals`](#thospitals)): which hospital or hospital system this encounter occurred within.
-tHospitals
-- `procedure_name` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc.; analogous to `tIsolates.procedure_desc`.
+- `procedure_name` (string): describes what type of procedure was used to collect the specimen, e.g. a blood culture, a urine culture, a wound culture, etc.; analogous to `tIsolates.procedure_desc`. Although we use codes directly from our EMR, e.g. "CULTURE-BLOOD", you may use more human-friendly names.
 - `collection_unit` (string): the name of the unit within the hospital [system] represented by `hospital_ID` where collection occurred. Can be any string. analogous to `tIsolates.collection_unit`.
 
 ### tIsolateTestResults
@@ -194,5 +196,5 @@ This table should include the following fields:
 - `test_ID` (integer, **FK** to [`tIsolateTestResults`](#thospitals)): which microbiological test this result is associated with. Tests can have zero, one, or multiple results.
 - `test_result` (string): A summary of the test outcome. Valid values include the exact strings "positive" and "negative"; any result that is not "negative" is treated equivalently to "positive" for the purposes of drawing the visualizations.
 - `description` (string): optional. Additional text explaining the test outcome can be included here, such as "No growth for 5 days."
-- `organism_ID` (integer, **FK** to [`tOrganisms`](#torganisms)): optional. If the test result refers to a specific organism, this can be annotated in this field.
-- `isolate_ID` (string, **FK** to [`tIsolates`](#tisolates)): optional. If this test result produced an isolate that was banked and recorded in this database, this link can be stored in this field.
+- `organism_ID` (integer, **FK** to [`tOrganisms`](#torganisms)): optional. If the test result refers to a specific organism, this can be annotated in this field. If not, set to **NULL** or the empty string.
+- `isolate_ID` (string, **FK** to [`tIsolates`](#tisolates)): optional. If this test result produced an isolate that was banked and recorded in [`tIsolates`](#tisolates), store a link to it in this field. If not, set to **NULL** or the empty string.
