@@ -26,5 +26,5 @@ export PATHOGENDB_URI="mysql2://user:pass@host/database"
 # Defaults will probably work for these
 export PERL5LIB="/usr/bin/perl5.10.1"
 export TMP="/sc/hydra/scratch/$USER/tmp"
-mdir -p $TMP
+mkdir -p $TMP
 export IGB_DIR="/sc/arion/projects/InfectiousDisease/igb"
