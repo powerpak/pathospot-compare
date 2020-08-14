@@ -137,6 +137,7 @@ file "#{MASH_DIR}/mash" do
 end
 
 EXAMPLE_DB = "#{EXAMPLE_DIR}/mrsa.db"
+desc "Downloads the example MRSA dataset (see https://pathospot.org) into example/"
 task :example_data => [:env, :example_check, EXAMPLE_DIR, EXAMPLE_DB, "#{EXAMPLE_DIR}/igb"]
 directory EXAMPLE_DIR
 directory "#{EXAMPLE_DIR}/igb" => "#{EXAMPLE_DIR}/mrsa.db"
