@@ -108,7 +108,8 @@ This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` en
 You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**.
 
 - `MASH_CUTOFF`: The maximum diameter, in Mash units, of each cluster. Mash units approximate average nucleotide identity (ANI). The default is **0.02**, approximating 98% ANI (1 - 0.02) among all genomes in each cluster.
-- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. 
+- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. This should be greater than the largest conceivable outbreak you could expect in your dataset. If the heatmap in [pathoSPOT-visualize][] warns you about this, we recommend rerunning with a higher number to see if your outbreak clusters grow larger.
+- `DISABLE_PHIPACK`: By default, this task will configure parsnp to use [PhiPack][] to filter SNPs in likely regions of recombination. This can be disabled by setting this environment variable to anything.
 
 This tasks creates two final output files which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
 
@@ -128,6 +129,7 @@ When these are placed in the `data/` directory of [pathoSPOT-visualize][], it en
 [sequeluri]: https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html
 [npz]: https://numpy.org/doc/stable/reference/generated/numpy.savez.html?highlight=savez#numpy.savez
 [README-database.md]: https://github.com/powerpak/pathospot-compare/blob/master/README-database.md
+[PhiPack]: http://www.maths.otago.ac.nz/~dbryant/software.html
 
 #### rake encounters
 
