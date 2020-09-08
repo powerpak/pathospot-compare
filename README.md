@@ -105,11 +105,11 @@ This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` en
 - `PATHOGENDB_URI`: A [URI][sequeluri] to the database containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`. See [README-database.md][] to learn how to build your own database.
 - `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][example], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location. The query can include any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
 
-You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**.
+You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE` that tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**. There is a third optional variable that disables recombination filtering.
 
 - `MASH_CUTOFF`: The maximum diameter, in Mash units, of each cluster. Mash units approximate average nucleotide identity (ANI). The default is **0.02**, approximating 98% ANI (1 - 0.02) among all genomes in each cluster.
 - `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. This should be greater than the largest conceivable outbreak you could expect in your dataset. If the heatmap in [pathoSPOT-visualize][] warns you about this, we recommend rerunning with a higher number to see if your outbreak clusters grow larger.
-- `DISABLE_PHIPACK`: By default, this task will configure parsnp to use [PhiPack][] to filter SNPs in likely regions of recombination. This can be disabled by setting this environment variable to anything.
+- `DISABLE_PHIPACK`: By default, this task will configure parsnp to use [PhiPack][] to filter SNPs in likely regions of recombination. Set this variable to anything to disable this behavior.
 
 This tasks creates two final output files which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
 
