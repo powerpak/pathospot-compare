@@ -181,3 +181,7 @@ If you want to copy the final outputs outside of the Vagrant environment, e.g. t
 ## Other notes
 
 This pipeline downloads and installs the appropriate versions of [Mash][] and [HarvestTools][] into `vendor/`.
+
+## License
+
+Software in this repository (not inclusive of library dependencies or software downloaded and installed alongside it when it is executed) is licensed under the standard MIT license, a permissive free software license. See the LICENSE.txt for more details.
