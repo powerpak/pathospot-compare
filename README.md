@@ -82,7 +82,7 @@ When the analysis finishes, there will be four output files saved into `out/`, w
 - `.encounters.tsv` → made by `encounters`; contains spatiotemporal data for patients
 - `.epi.heatmap.json` → made by `epi`; contains culture test data (positives and negatives)
 
-These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8888>, which forwards to the virtual machine. For AWS, navigate instead to your public IPv4 address, which you can obtain by running the following within the EC2 instance:
+These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8989>, which forwards to the virtual machine. For AWS, navigate instead to your public IPv4 address, which you can obtain by running the following within the EC2 instance:
 
 	$ curl http://169.254.169.254/latest/meta-data/public-ipv4; echo
 
