@@ -67,7 +67,7 @@ Rake, aka [Ruby Make][rake], is used to kick off the pipeline. Some tasks requir
 
 [rake]: https://github.com/ruby/rake
 
-### Quickstart
+### Quickstart – Run the example analysis
 
 If you used Vagrant to get started, it automatically downloads the [example dataset (tar.gz)][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are saved at `example/igb` and their metadata is in `example/mrsa.db`. (If you are not using Vagrant, you can run `rake example_data` to do the same.) Default environment variables in `scripts/env.sh` are configured so that the pipeline will run on the example data.
 
