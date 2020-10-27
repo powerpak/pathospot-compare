@@ -152,7 +152,7 @@ file "#{EXAMPLE_DIR}/mrsa.db" => EXAMPLE_DIR do
   STDERR.puts "Downloading example dataset from pathospot.org..."
   Dir.chdir(EXAMPLE_DIR) do
     system <<-SH or abort
-      curl -L -s -k -o mrsa.tar.gz 'https://pathospot.org/data/mrsa.tar.gz'
+      curl -L -s -o mrsa.tar.gz 'https://pathospot.org/data/mrsa.tar.gz'
       tar xvzf mrsa.tar.gz && rm mrsa.tar.gz
     SH
   end
