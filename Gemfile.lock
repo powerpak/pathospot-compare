@@ -3,9 +3,7 @@ GEM
   specs:
     bio (1.5.1)
     mysql2 (0.5.2)
-    rake (10.5.0)
-    rake-multifile (0.1.0)
-      rake (~> 10.0)
+    rake (12.3.3)
     sequel (4.30.0)
     sqlite3 (1.3.13)
     tqdm (0.3.0)
@@ -16,11 +14,10 @@ PLATFORMS
 DEPENDENCIES
   bio (~> 1.5.0)
   mysql2 (~> 0.5.2)
-  rake (~> 10.5.0)
-  rake-multifile (~> 0.1.0)
+  rake (~> 12.3.3)
   sequel (~> 4.30.0)
   sqlite3 (~> 1.3.13)
   tqdm (~> 0.3.0)
 
 BUNDLED WITH
-   1.12.5
+   2.1.4

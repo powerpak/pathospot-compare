@@ -1,6 +1,5 @@
 require 'rubygems'
 require 'bundler/setup'
-require 'rake-multifile'
 require 'pp'
 require 'net/http'
 require 'tmpdir'
