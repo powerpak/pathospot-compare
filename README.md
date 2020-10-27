@@ -1,5 +1,7 @@
 # pathoSPOT-compare
 
+[![DOI](https://zenodo.org/badge/28641657.svg)](https://zenodo.org/badge/latestdoi/28641657)
+
 This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
 
 The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a [relational database][README-database.md] (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
