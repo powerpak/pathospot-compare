@@ -8,17 +8,17 @@ The pipeline is run on sequenced pathogen genomes, for which metadata (dates, lo
 
 <p align="center"><a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
 
-For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our preprint:
+For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our paper in _Genome Medicine_:
 
-> Berbel Caban A, Pak TR, Obla A et al. 2020. [PathoSPOT genomic surveillance reveals under the radar outbreaks of methicillin resistant S. aureus bloodstream infections][preprint]. _medRxiv_ (preprint). doi:10.1101/2020.05.11.20098103
+> Berbel Caban A, Pak TR, Obla A et al. 2020. [PathoSPOT genomic surveillance reveals under-the radar-nosocomial outbreaks][gm]. _Genome Medicine_ **12**, 96 (2020). https://doi.org/10.1186/s13073-020-00798-3
 
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
 [pathospot]: https://pathospot.org
-[preprint]: https://www.medrxiv.org/content/10.1101/2020.05.11.20098103v1
+[gm]: https://genomemedicine.biomedcentral.com/articles/10.1186/s13073-020-00798-3
 
 ## Requirements
 
-This pipeline runs on Linux; however, Mac and Windows users can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
+This pipeline runs on Linux; however, Mac and Windows users can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby **2.2 or 2.3** with rake ≥12.3.3 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
 
 [MUMmer]: http://mummer.sourceforge.net/
 
