@@ -1,6 +1,5 @@
 require 'rubygems'
 require 'bundler/setup'
-require 'rake-multifile'
 require 'pp'
 require 'net/http'
 require 'tmpdir'
@@ -70,6 +69,7 @@ IN_PATHS_PAIRS = IN_PATHS && IN_PATHS.permutation(2)
 
 DISTANCE_THRESHOLD = ENV['DISTANCE_THRESHOLD'] ? ENV['DISTANCE_THRESHOLD'].to_i : 10
 OUT_PREFIX = ENV['OUT_PREFIX'] ? ENV['OUT_PREFIX'].gsub(/[^\w-]/, '') : "out"
+DISABLE_PHIPACK = ENV['DISABLE_PHIPACK'] || false
 
 #######
 # Deprecated tasks are in a separate Rakefile and not loaded by default (see README-deprecated-tasks.md)
@@ -137,6 +137,7 @@ file "#{MASH_DIR}/mash" do
 end
 
 EXAMPLE_DB = "#{EXAMPLE_DIR}/mrsa.db"
+desc "Downloads the example MRSA dataset (see https://pathospot.org) into example/"
 task :example_data => [:env, :example_check, EXAMPLE_DIR, EXAMPLE_DB, "#{EXAMPLE_DIR}/igb"]
 directory EXAMPLE_DIR
 directory "#{EXAMPLE_DIR}/igb" => "#{EXAMPLE_DIR}/mrsa.db"
@@ -315,11 +316,13 @@ rule %r{/parsnp\.ggr$} => proc{ |n| parsnp_ggr_to_parsnp_inputs(n) } do |t|
   end
   
   # Run parsnp on the `clust_dir` from above
-  # See here for a parsnp FAQ: https://harvest.readthedocs.io/en/latest/content/parsnp/faq.html
+  # Documentation: https://harvest.readthedocs.io/en/latest/content/parsnp/quickstart.html#command-line-parameters
   #   -c => curated genome directory: use *all* genomes in dir, ignore MUMi distances
+  #   -x => enable filtering of SNPs located in PhiPack identified regions of recombination? (default: NO)
   system <<-SH or abort
     #{HARVEST_DIR}/parsnp #{referenceOrGenbank} \
         -c \
+        #{DISABLE_PHIPACK ? '' : '-x'} \
         -o #{File.dirname(t.name).shellescape} \
         -d #{input_dir.shellescape}
   SH

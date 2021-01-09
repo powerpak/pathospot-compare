@@ -2,14 +2,12 @@
 
 Vagrant can run this pipeline on the AWS cloud using your AWS credentials. First, [install Vagrant][vagrant] if you haven't already. Then clone this repository to a directory on your development machine and `cd` into it.
 
-We have to manually install a specific version of a prerequisite Vagrant plugin `fog-ovirt` because of an incompatibility with the version of Ruby included in Vagrant 2.2.7 (which [will be fixed][fixvagrant] in Vagrant 2.2.8).
+Note: you need to have Vagrant version ≥2.2.9 in order for the following to work, because of a [bug when installing vagrant-aws][fixvagrant] on earlier versions. To check your version, run `vagrant --version`.
 
 [vagrant]: https://www.vagrantup.com/downloads.html
 [fixvagrant]: https://github.com/hashicorp/vagrant/issues/11518
 
-    $ vagrant plugin install --plugin-version 1.0.1 fog-ovirt
-
-Then, install the `vagrant-aws` plugin and the dummy box that goes along with it. 
+To get started install the `vagrant-aws` plugin and the dummy box that goes along with it. 
 
 	$ vagrant plugin install vagrant-aws
     $ vagrant box add aws-dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
@@ -48,3 +46,13 @@ Vagrant will spend a few minutes configuring and building the VM. Once it's done
 You should see the bash prompt `admin@ip-...:/vagrant$`, and may proceed to [**Usage** in the main README](https://github.com/powerpak/pathospot-compare#usage).
 
 The next time you want to use the pipeline in this VM, you won't need to start all over again; simply `logout` of your VM and `vagrant halt` to exit, and `vagrant up; vagrant ssh` to pick up where you left off. (To delete all traces of the VM from AWS, use `vagrant destroy`.)
+
+### Finding your public IP
+
+Once the pipeline has completed, you will likely want to view the results in [pathospot-visualize][], which is automatically installed to your EC2 instance and served over HTTP. You will need to find out your public IP address, which you can do by running the following on the VM:
+
+    $ curl http://169.254.169.254/latest/meta-data/public-ipv4; echo
+
+Paste this IP address into your web browser's address bar to open [pathospot-visualize][].
+
+[pathospot-visualize]: https://github.com/powerpak/pathospot-visualize

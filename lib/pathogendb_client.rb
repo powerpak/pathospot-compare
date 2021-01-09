@@ -6,7 +6,7 @@ class PathogenDBClient
   
   # What columns in tAssemblies should be faked as dummy columns in tIsolates?
   # This allows the same `where_clause` to be applied to both `#assemblies` and `#isolates`
-  #    (convenient for running multiple tasks in the Rakefile with the same parameters)
+  #    (convenient for running multiple tasks in the Rakefile, e.g. parsnp and epi, with the same parameters)
   # This is a hash of column names => dummy values
   ISOLATE_DUMMY_COLUMNS = {
     qc_failed: 0

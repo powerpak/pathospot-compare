@@ -1,14 +1,16 @@
 # pathoSPOT-compare
 
+[![DOI](https://zenodo.org/badge/28641657.svg)](https://zenodo.org/badge/latestdoi/28641657)
+
 This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Patho**gen **S**equencing **P**hylogenomic **O**utbreak **T**oolkit.
 
-The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a relational database (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
+The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a [relational database][README-database.md] (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
 
 <p align="center"><a href="https://pathospot.org"><img src="//pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
 
 For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our paper:
 
-> Berbel Caban A, Pak TR, Obla A et al. [PathoSPOT genomic epidemiology reveals under-the-radar nosocomial outbreaks.][genomemed] _Genome Med._ 2020 Nov 16;12(1):96. PMID:[33198787][pubmed] doi:10.1186/s13073-020-00798-3
+> Berbel Caban A, Pak TR, Obla A et al. [PathoSPOT genomic epidemiology reveals under-the-radar nosocomial outbreaks.][genomemed] _Genome Medicine_ 2020 Nov 16;**12**(1):96. PMID:[33198787][pubmed] doi:10.1186/s13073-020-00798-3
 
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
 [pathospot]: https://pathospot.org
@@ -17,7 +19,7 @@ For example output and a live demo, please see the [PathoSPOT website][pathospot
 
 ## Requirements
 
-This pipeline runs on Linux; however, Mac and Windows users can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby ≥2.2 with rake ≥10.5 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
+This pipeline runs on Linux; however, Mac and Windows users can use [Vagrant][] to rapidly build and launch a Linux virtual machine with the pipeline ready-to-use, either locally or on cloud providers (e.g., AWS). This bioinformatics pipeline requires ruby **2.2 or 2.3** with rake ≥12.3.3 and bundler, python 2.7 with the modules in `requirements.txt`, [MUMmer][] 3.23, the standard Linux build toolchain, and additional software that the pipeline will build and install itself. 
 
 [MUMmer]: http://mummer.sourceforge.net/
 
@@ -68,9 +70,9 @@ Rake, aka [Ruby Make][rake], is used to kick off the pipeline. Some tasks requir
 
 [rake]: https://github.com/ruby/rake
 
-### Quickstart
+### Quickstart – Run the example analysis
 
-If you used Vagrant to get started, it automatically downloads an [example dataset (tar.gz)][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are saved at `example/igb` and their metadata is in `example/mrsa.db`. Default environment variables in `scripts/env.sh` are configured so that the pipeline will run on the example data.
+If you used Vagrant to get started, it automatically downloads the [example dataset (tar.gz)][mrsa.tar.gz] for MRSA isolates at Mount Sinai. The genomes are saved at `example/igb` and their metadata is in `example/mrsa.db`. (If you are not using Vagrant, you can run `rake example_data` to do the same.) Default environment variables in `scripts/env.sh` are configured so that the pipeline will run on the example data.
 
 To run the full analysis, run the following, which invokes the three main tasks (`parsnp`, `epi`, and `encounters`, explained more below).
 
@@ -83,16 +85,16 @@ When the analysis finishes, there will be four output files saved into `out/`, w
 - `.encounters.tsv` → made by `encounters`; contains spatiotemporal data for patients
 - `.epi.heatmap.json` → made by `epi`; contains culture test data (positives and negatives)
 
-These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8888>, which forwards to the virtual machine. For AWS, navigate instead to your public IPv4 address, which you can obtain by running the following within the EC2 instance:
+These outputs can be visualized using [pathoSPOT-visualize][], which the Vagrant environment automatically installs and sets up for you. If you used VirtualBox, simply go to <http://localhost:8989>, which forwards to the virtual machine. For AWS, navigate instead to your public IPv4 address, which you can obtain by running the following within the EC2 instance:
 
-	$ curl http://169.254.169.254/latest/meta-data/public-ipv4
+	$ curl http://169.254.169.254/latest/meta-data/public-ipv4; echo
 
 [mrsa.tar.gz]: https://pathospot.org/data/mrsa.tar.gz
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
 
 ### Rake tasks
 
-By default, all output for tasks is saved in `./out`. To change this, set the `OUT` environment variable.
+By default, all output for tasks is saved in `out/`. To change this, set the `OUT` environment variable.
 
 #### rake parsnp
 
@@ -103,13 +105,14 @@ By default, all output for tasks is saved in `./out`. To change this, set the `O
 This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` environment variables. When using the [example environment][example], these variables are set for you and run a full analysis on the example dataset.
 
 - `IGB_DIR`: The full path to a directory containing the genome assemblies, in [FASTA format][fasta]. Each of these files should be in its own subdirectory named identically minus the `.fa` or `.fasta` extension. Each subdirectory may also contain a [BED file][bed] with gene annotations. See the `igb` directory in the [example dataset (tar.gz)][mrsa.tar.gz].
-- `PATHOGENDB_URI`: A [URI to the database][sequeluri] containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`.
+- `PATHOGENDB_URI`: A [URI][sequeluri] to the database containing metadata on the genome assemblies; for SQLite, it is `sqlite://` followed by a relative path to the file, and for MySQL the format is `mysql2://user:password@host/db_name`. See [README-database.md][] to learn how to build your own database.
 - `IN_QUERY`: An `SQL WHERE` clause that can filter which assemblies in the database are included in the analysis. For our [example][example], `1=1` is used, which simply uses all of the assemblies. For your databases you create, it will likely become useful to filter by species and/or location. The query can include any of the columns in the `tAssemblies`, `tExtracts`, `tStocks`, `tIsolates`, `tOrganisms` and `tHospitals` tables.
 
-You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE`, which tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**.
+You may optionally specify two additional environment variables `MASH_CUTOFF` and `MAX_CLUSTER_SIZE` that tune the [Mash][] preclustering step. To disable Mash preclustering, set both of these to the value **0**. There is a third optional variable that disables recombination filtering.
 
 - `MASH_CUTOFF`: The maximum diameter, in Mash units, of each cluster. Mash units approximate average nucleotide identity (ANI). The default is **0.02**, approximating 98% ANI (1 - 0.02) among all genomes in each cluster.
-- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. 
+- `MAX_CLUSTER_SIZE`: The maximum number of assemblies to allow in each cluster before forcing a split. The default is **100**. This should be greater than the largest conceivable outbreak you could expect in your dataset. If the heatmap in [pathoSPOT-visualize][] warns you about this, we recommend rerunning with a higher number to see if your outbreak clusters grow larger.
+- `DISABLE_PHIPACK`: By default, this task will configure parsnp to use [PhiPack][] to filter SNPs in likely regions of recombination. Set this variable to anything to disable this behavior.
 
 This tasks creates two final output files which include a YYYY-MM-DD formatted date in the filename and have the following extensions:
 
@@ -128,6 +131,8 @@ When these are placed in the `data/` directory of [pathoSPOT-visualize][], it en
 [bed]: https://genome.ucsc.edu/FAQ/FAQformat.html#format1
 [sequeluri]: https://sequel.jeremyevans.net/rdoc/files/doc/opening_databases_rdoc.html
 [npz]: https://numpy.org/doc/stable/reference/generated/numpy.savez.html?highlight=savez#numpy.savez
+[README-database.md]: https://github.com/powerpak/pathospot-compare/blob/master/README-database.md
+[PhiPack]: http://www.maths.otago.ac.nz/~dbryant/software.html
 
 #### rake encounters
 
@@ -157,6 +162,14 @@ This is a shortcut for `rake parsnp encounters epi`, which runs all three of tho
 
 This downloads the [example dataset (tar.gz)][mrsa.tar.gz] into `example/`, if it is not already present.
 
+## Metadata database
+
+Besides the genome sequences and their gene annotations, the pipeline expects a metadata database supplied via the `PATHOGENDB_URI` parameter. We provide an example database called `mrsa.db` in the [example dataset (tar.gz)](https://pathospot.org/data/mrsa.tar.gz), which you can open and modify to begin analyzing your own specimens. You do not need to be a programmer or pay for software to do so; we used [SQLite][] which is free and open-source software with many available GUI tools.
+
+To learn how to get started on your own database, see [README-database.md][].
+
+[SQLite]: https://www.sqlite.org/index.html
+
 ## Exporting data from Vagrant
 
 If you want to copy the final outputs outside of the Vagrant environment, e.g. to serve them with [pathoSPOT-visualize][] from a different machine, use [vagrant-scp][] as follows from the _host_ machine:
@@ -170,4 +183,8 @@ If you want to copy the final outputs outside of the Vagrant environment, e.g. t
 
 ## Other notes
 
-This pipeline downloads and installs the appropriate versions of Mash and HarvestTools into `vendor/`.
+This pipeline downloads and installs the appropriate versions of [Mash][] and [HarvestTools][] into `vendor/`.
+
+## License
+
+Software in this repository (not inclusive of library dependencies or software downloaded and installed alongside it when it is executed) is licensed under the standard MIT license, a permissive free software license. See the LICENSE.txt for more details.
