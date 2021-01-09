@@ -6,7 +6,7 @@ This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Path
 
 The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a [relational database][README-database.md] (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
 
-<p align="center"><a href="https://pathospot.org"><img src="http://pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
+<p align="center"><a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
 
 For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our paper:
 
