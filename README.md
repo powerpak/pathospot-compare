@@ -6,13 +6,14 @@ The pipeline is run on sequenced pathogen genomes, for which metadata (dates, lo
 
 <p align="center"><a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo.svg" width="640px"/></a></p>
 
-For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our preprint:
+For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our paper:
 
-> Berbel Caban A, Pak TR, Obla A et al. 2020. [PathoSPOT genomic surveillance reveals under the radar outbreaks of methicillin resistant S. aureus bloodstream infections][preprint]. _medRxiv_ (preprint). doi:10.1101/2020.05.11.20098103
+> Berbel Caban A, Pak TR, Obla A et al. [PathoSPOT genomic epidemiology reveals under-the-radar nosocomial outbreaks.][genomemed] _Genome Med._ 2020 Nov 16;12(1):96. PMID:[33198787][pubmed] doi:10.1186/s13073-020-00798-3
 
 [pathoSPOT-visualize]: https://github.com/powerpak/pathospot-visualize
 [pathospot]: https://pathospot.org
-[preprint]: https://www.medrxiv.org/content/10.1101/2020.05.11.20098103v1
+[genomemed]: https://genomemedicine.biomedcentral.com/articles/10.1186/s13073-020-00798-3
+[pubmed]: https://pubmed.ncbi.nlm.nih.gov/33198787/
 
 ## Requirements
 
