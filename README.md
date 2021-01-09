@@ -6,7 +6,7 @@ This is the comparative genomics pipeline for [PathoSPOT][pathospot], the **Path
 
 The pipeline is run on sequenced pathogen genomes, for which metadata (dates, locations, etc.) are kept in a [relational database][README-database.md] (either SQLite or MySQL), and it produces output files that can be interactively visualized with [pathoSPOT-visualize][].
 
-<p align="center"><a href="https://pathospot.org"><img src="https://pathospot.org/images/pathospot-logo.svg?" width="640px"/></a></p>
+<p align="center"><a href="https://pathospot.org"><img src="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/pathospot-logo.svg" width="640px"/></a></p>
 
 For example output and a live demo, please see the [PathoSPOT website][pathospot]. Below, we provide documentation on how to setup and run the pipeline on your own computing environment. If you use this software, please cite our paper:
 
@@ -100,7 +100,7 @@ By default, all output for tasks is saved in `out/`. To change this, set the `OU
 
 `rake parsnp` uses [Parsnp][] from [HarvestTools][] to create intraspecific genome alignments (on assembly sequences in FASTA files, with optional gene annotations in BED format). An optional (but recommended) preclustering step is performed with [Mash][] to only align clusters of genomes that appear closely related, allowing these alignments to include a larger core genome and increase confidence that SNP counts will accurately reflect genetic divergence.
 
-<img src="https://pathospot.org/images/pathospot-compare-diagram.svg" width="250px"/>
+<img src="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/pathospot-compare-diagram.svg" width="250px"/>
 
 This task requires you to set the `IGB_DIR`, `PATHOGENDB_URI`, and `IN_QUERY` environment variables. When using the [example environment][example], these variables are set for you and run a full analysis on the example dataset.
 
@@ -119,7 +119,7 @@ This tasks creates two final output files which include a YYYY-MM-DD formatted d
 - `.parsnp.heatmap.json` → contains the genomic SNP distance matrix and other metadata, in JSON format
 - `.parsnp.vcfs.npz` → contains SNP variant data for each genome, in NumPy [NPZ format][npz].
 
-<a href="https://pathospot.org/heatmap.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&filter=clustersOnly&snps=15&range=0.0|1.0"><img src="https://pathospot.org/images/heatmap.png" width="360px"/></a>
+<a href="https://pathospot.org/heatmap.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&filter=clustersOnly&snps=15&range=0.0|1.0"><img src="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/heatmap.png" width="360px"/></a>
 
 When these are placed in the `data/` directory of [pathoSPOT-visualize][], it enables the "heatmap" visualization as seen above.
 
@@ -140,7 +140,7 @@ When these are placed in the `data/` directory of [pathoSPOT-visualize][], it en
 
 The output file includes a YYYY-MM-DD formatted date in the filename and ends with `.encounters.tsv`.
 
-<a href="https://pathospot.org/dendro-timeline.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&assemblies=S_aureus_ER09654_3A_026146%20S_aureus_ER11693_3A_027097%20S_aureus_ER11501_3A_026953%20S_aureus_ER11761_3A_027108%20S_aureus_ER07227_3A_025296%20S_aureus_ER05786_3A_024918%20S_aureus_ER05686_3A_023855%20S_aureus_ER05682_3A_023854%20S_aureus_PS00099_3A_024679%20S_aureus_ER07103_3A_025066%20S_aureus_ER07191_3A_025295%20S_aureus_ER07131_3A_025294%20S_aureus_ER05686_5A_025756%20S_aureus_ER05353_3A_023850%20S_aureus_ER05508_3A_024907%20S_aureus_ER05526_3A_024910%20S_aureus_ER05891_3A_025759%20S_aureus_ER06446_3A_024926%20S_aureus_ER06037_3A_025806%20S_aureus_ER05368_3A_023852%20S_aureus_ER05866_3A_025757%20S_aureus_ER05682_5A_025755%20S_aureus_ER09911_3A_026327%20S_aureus_ER07970_3C_026528&colorNodes=collection_unit&filter=inpatient&timelineGrouping=0&isolateTests=seq-and-same-species&variantLabels=gene&variantNtOrAa=nt&showOverlaps=1&tolerance=12&sort=(%270!(%272AD10BD34B5-40C5-77*3D142A7-176C3-181B9-399A5-459C9-476A9-574C7-593B3-628B7-648CD669A22.5%27))*!%270000000-0%27~A*2B*1C*0D1-%01DCBA-*"><img src="https://pathospot.org/images/timeline.png" width="360px"/></a>
+<a href="https://pathospot.org/dendro-timeline.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&assemblies=S_aureus_ER09654_3A_026146%20S_aureus_ER11693_3A_027097%20S_aureus_ER11501_3A_026953%20S_aureus_ER11761_3A_027108%20S_aureus_ER07227_3A_025296%20S_aureus_ER05786_3A_024918%20S_aureus_ER05686_3A_023855%20S_aureus_ER05682_3A_023854%20S_aureus_PS00099_3A_024679%20S_aureus_ER07103_3A_025066%20S_aureus_ER07191_3A_025295%20S_aureus_ER07131_3A_025294%20S_aureus_ER05686_5A_025756%20S_aureus_ER05353_3A_023850%20S_aureus_ER05508_3A_024907%20S_aureus_ER05526_3A_024910%20S_aureus_ER05891_3A_025759%20S_aureus_ER06446_3A_024926%20S_aureus_ER06037_3A_025806%20S_aureus_ER05368_3A_023852%20S_aureus_ER05866_3A_025757%20S_aureus_ER05682_5A_025755%20S_aureus_ER09911_3A_026327%20S_aureus_ER07970_3C_026528&colorNodes=collection_unit&filter=inpatient&timelineGrouping=0&isolateTests=seq-and-same-species&variantLabels=gene&variantNtOrAa=nt&showOverlaps=1&tolerance=12&sort=(%270!(%272AD10BD34B5-40C5-77*3D142A7-176C3-181B9-399A5-459C9-476A9-574C7-593B3-628B7-648CD669A22.5%27))*!%270000000-0%27~A*2B*1C*0D1-%01DCBA-*"><img src="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/timeline.png" width="360px"/></a>
 
 When provided to [pathoSPOT-visualize][] alongside the outputs from `rake parsnp`, it enables the "timeline" visualization within the "dendro-timeline", as seen above.
 
@@ -150,7 +150,7 @@ When provided to [pathoSPOT-visualize][] alongside the outputs from `rake parsnp
 
 The output file includes a YYYY-MM-DD formatted date in the filename and ends with `.epi.heatmap.json`.
 
-<a href="https://pathospot.org/heatmap.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&filter=mergeSamePt&snps=15&order=groupOrder&range=0%7C0.15&mode=network&play=1"><img src="https://pathospot.org/images/network.png" width="360px"/></a>
+<a href="https://pathospot.org/heatmap.php?db=outbreak_MRSA-orange_deID.2019-10-20.parsnp&filter=mergeSamePt&snps=15&order=groupOrder&range=0%7C0.15&mode=network&play=1"><img src="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/network.png" width="360px"/></a>
 
 When provided to [pathoSPOT-visualize][] alongside the outputs from `rake parsnp`, it enables the display of non-sequenced culture results in the "dendro-timeline" as well as the density map of collected isolates underlying the "network" visualization, seen above.
 
