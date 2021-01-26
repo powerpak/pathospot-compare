@@ -40,7 +40,7 @@ You do not; you can use any database that [Sequel](https://sequel.jeremyevans.ne
 
 An abbreviated graphical summary of the schema follows (click to see the full version with all fields included).
 
-<a href="https://pathospot.org/images/schema-large.png"><img src="https://pathospot.org/images/schema-compact.png" /></a>
+<a href="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/schema-large.png"><img src="https://raw.githubusercontent.com/powerpak/pathospot-visualize/master/images/schema-compact.png" /></a>
 
 In this schema, the major landmarks are:
 
