@@ -20,7 +20,7 @@ gem install rake
 
 # Install mummer
 cd /opt
-curl -L -s -o mummer.tar.gz \
+curl -k -L -s -o mummer.tar.gz \
   'https://sourceforge.net/projects/mummer/files/mummer/3.23/MUMmer3.23.tar.gz/download'
 tar xvzf mummer.tar.gz
 cd MUMmer3.23
