@@ -1,5 +1,5 @@
 tqdm==4.11.2
-numpy==1.14.0
+numpy==1.22.0
 ete3==3.0.0b35
 biopython==1.69
 networkx==2.2
